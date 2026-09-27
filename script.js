@@ -92,21 +92,20 @@ function closeModal() {
 
 // ===== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ =====
 function go(page) {
-  if (page === 'leaderboard') renderLeaderboard();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
 
-  // Ленивая загрузка: грузим ТОЛЬКО нужную страницу
   if (page === 'home' || page === 'teams') renderTeams();
   if (page === 'invites') renderInvites();
   if (page === 'friends') renderFriends();
   if (page === 'messages') renderDialogs();
   if (page === 'profile') renderProfile();
+  if (page === 'leaderboard') renderLeaderboard();
+  if (page === 'games') updateGamesStats();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
 // ===== ЯЗЫК =====
 function setLang(lang) {
   currentLang = lang;
@@ -2154,3 +2153,393 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderProfile();
   go('home');
 });
+
+
+
+// =========================================================
+// МИНИ-ИГРЫ
+// =========================================================
+
+// ===== УПРАВЛЕНИЕ ИГРАМИ =====
+let activeGame = null;
+let gameInterval = null;
+
+function openGame(game) {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+  
+  activeGame = game;
+  
+  if (game === 'snake') startSnake();
+  if (game === 'reaction') startReaction();
+  if (game === 'guess') startGuess();
+  if (game === 'clicker') startClicker();
+}
+
+function closeGame() {
+  if (gameInterval) clearInterval(gameInterval);
+  gameInterval = null;
+  activeGame = null;
+  closeModal();
+}
+
+// ===== ЗМЕЙКА =====
+function startSnake() {
+  const best = parseInt(localStorage.getItem('snake_best') || '0');
+  document.getElementById('snake-best').textContent = best;
+  
+  openModal(`
+    <div class="game-modal">
+      <h3>🐍 Змейка</h3>
+      <p class="sub">Стрелки — движение. Собирай яблоки.</p>
+      <div class="game-hud">
+        <div class="hud-item">Счёт: <b id="snake-score">0</b></div>
+        <div class="hud-item">Рекорд: <b>${best}</b></div>
+      </div>
+      <canvas id="snake-canvas" class="game-canvas" width="400" height="400"></canvas>
+      <button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="closeGame()">Закрыть</button>
+    </div>
+  `, { lockBackdrop: true });
+  
+  setTimeout(initSnake, 100);
+}
+
+function initSnake() {
+  const canvas = document.getElementById('snake-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  const GRID = 20;
+  const CELLS = 20;
+  const CELL = canvas.width / CELLS;
+  
+  let snake = [{ x: 10, y: 10 }];
+  let dir = { x: 1, y: 0 };
+  let nextDir = { x: 1, y: 0 };
+  let food = { x: 15, y: 15 };
+  let score = 0;
+  let speed = 120;
+  
+  function randomFood() {
+    let pos;
+    do {
+      pos = { x: Math.floor(Math.random() * CELLS), y: Math.floor(Math.random() * CELLS) };
+    } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+    food = pos;
+  }
+  
+  function draw() {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Сетка
+    ctx.strokeStyle = '#1a1a1a';
+    for (let i = 0; i < CELLS; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * CELL, 0);
+      ctx.lineTo(i * CELL, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * CELL);
+      ctx.lineTo(canvas.width, i * CELL);
+      ctx.stroke();
+    }
+    
+    // Еда
+    ctx.fillStyle = '#ffc83c';
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = '#ffc83c';
+    ctx.shadowBlur = 15;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Змейка
+    snake.forEach((seg, i) => {
+      const isHead = i === 0;
+      ctx.fillStyle = isHead ? '#ffffff' : `rgba(255, 255, 255, ${1 - i * 0.05})`;
+      ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+      
+      if (isHead) {
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+        ctx.shadowBlur = 0;
+      }
+    });
+  }
+  
+  function step() {
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    
+    // Стены
+    if (head.x < 0 || head.x >= CELLS || head.y < 0 || head.y >= CELLS) return gameOver();
+    // Себя
+    if (snake.some(s => s.x === head.x && s.y === head.y)) return gameOver();
+    
+    snake.unshift(head);
+    
+    if (head.x === food.x && head.y === food.y) {
+      score++;
+      document.getElementById('snake-score').textContent = score;
+      randomFood();
+      
+      if (score % 5 === 0) {
+        speed = Math.max(50, speed - 10);
+        clearInterval(gameInterval);
+        gameInterval = setInterval(step, speed);
+      }
+    } else {
+      snake.pop();
+    }
+    
+    draw();
+  }
+  
+  function gameOver() {
+    clearInterval(gameInterval);
+    const best = parseInt(localStorage.getItem('snake_best') || '0');
+    if (score > best) {
+      localStorage.setItem('snake_best', score);
+      document.getElementById('snake-best').textContent = score;
+      toast(`🏆 Новый рекорд: ${score}!`);
+    } else {
+      toast(`Игра окончена. Счёт: ${score}`);
+    }
+    
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+    ctx.font = '16px Arial';
+    ctx.fillStyle = '#ffc83c';
+    ctx.fillText('Счёт: ' + score, canvas.width / 2, canvas.height / 2 + 30);
+  }
+  
+  // Управление
+  const keyHandler = (e) => {
+    if (activeGame !== 'snake') return;
+    if (e.key === 'ArrowUp' && dir.y === 0) nextDir = { x: 0, y: -1 };
+    if (e.key === 'ArrowDown' && dir.y === 0) nextDir = { x: 0, y: 1 };
+    if (e.key === 'ArrowLeft' && dir.x === 0) nextDir = { x: -1, y: 0 };
+    if (e.key === 'ArrowRight' && dir.x === 0) nextDir = { x: 1, y: 0 };
+    e.preventDefault();
+  };
+  
+  document.removeEventListener('keydown', keyHandler);
+  document.addEventListener('keydown', keyHandler);
+  
+  draw();
+  if (gameInterval) clearInterval(gameInterval);
+  gameInterval = setInterval(step, speed);
+}
+
+// ===== РЕАКЦИЯ =====
+function startReaction() {
+  const best = localStorage.getItem('reaction_best') || '—';
+  document.getElementById('reaction-best').textContent = best + (best !== '—' ? ' мс' : '');
+  
+  let state = 'waiting'; // waiting -> ready -> clicked
+  let startTime = 0;
+  let timeout = null;
+  
+  openModal(`
+    <div class="game-modal">
+      <h3>🎯 Реакция</h3>
+      <p class="sub">Кликни, когда круг станет зелёным</p>
+      <div class="game-area">
+        <div class="reaction-circle" id="reaction-circle">Жди...</div>
+        <div class="game-result" id="reaction-result"></div>
+      </div>
+      <button class="btn btn-block" style="margin-top:12px;" onclick="closeGame()">Закрыть</button>
+    </div>
+  `, { lockBackdrop: true });
+  
+  setTimeout(() => {
+    const circle = document.getElementById('reaction-circle');
+    if (!circle) return;
+    
+    const delay = 1500 + Math.random() * 2500;
+    
+    circle.onclick = () => {
+      if (state === 'waiting') {
+        clearTimeout(timeout);
+        circle.textContent = 'Рано! 😅';
+        setTimeout(() => startReaction(), 1200);
+        return;
+      }
+      if (state === 'ready') {
+        const time = Date.now() - startTime;
+        state = 'clicked';
+        circle.classList.remove('ready');
+        circle.textContent = time + ' мс';
+        document.getElementById('reaction-result').textContent = `⚡ ${time} мс`;
+        
+        const best = parseInt(localStorage.getItem('reaction_best') || '99999');
+        if (time < best) {
+          localStorage.setItem('reaction_best', time);
+          toast(`🏆 Новый рекорд: ${time} мс!`);
+          document.getElementById('reaction-best').textContent = time + ' мс';
+        }
+        
+        setTimeout(() => startReaction(), 1500);
+      }
+    };
+    
+    timeout = setTimeout(() => {
+      state = 'ready';
+      startTime = Date.now();
+      circle.textContent = 'ЖМИ!';
+      circle.classList.add('ready');
+    }, delay);
+  }, 100);
+}
+
+// ===== УГАДАЙ ЧИСЛО =====
+function startGuess() {
+  const wins = parseInt(localStorage.getItem('guess_wins') || '0');
+  document.getElementById('guess-wins').textContent = wins;
+  
+  const secret = Math.floor(Math.random() * 100) + 1;
+  let tries = 0;
+  const maxTries = 7;
+  
+  openModal(`
+    <div class="game-modal">
+      <h3>🧠 Угадай число</h3>
+      <p class="sub">От 1 до 100. У тебя 7 попыток.</p>
+      <div class="game-area">
+        <div class="game-result" id="guess-result">Попытка 0 / ${maxTries}</div>
+        <div class="guess-input">
+          <input type="number" id="guess-input" min="1" max="100" placeholder="Число..." autofocus>
+          <button class="btn btn-primary" onclick="submitGuess(${secret}, ${maxTries})">OK</button>
+        </div>
+      </div>
+      <button class="btn btn-block" style="margin-top:12px;" onclick="closeGame()">Закрыть</button>
+    </div>
+  `, { lockBackdrop: true });
+  
+  setTimeout(() => {
+    const input = document.getElementById('guess-input');
+    if (input) {
+      input.focus();
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') submitGuess(secret, maxTries);
+      };
+    }
+  }, 100);
+}
+
+function submitGuess(secret, maxTries) {
+  const input = document.getElementById('guess-input');
+  const result = document.getElementById('guess-result');
+  if (!input || !result) return;
+  
+  const val = parseInt(input.value);
+  if (!val || val < 1 || val > 100) { toast('Число от 1 до 100'); return; }
+  
+  // Считаем попытки в data-атрибуте
+  let tries = parseInt(result.dataset.tries || '0') + 1;
+  result.dataset.tries = tries;
+  
+  if (val === secret) {
+    result.textContent = `🎉 Угадал за ${tries} попыток!`;
+    result.style.color = '#22c55e';
+    const wins = parseInt(localStorage.getItem('guess_wins') || '0') + 1;
+    localStorage.setItem('guess_wins', wins);
+    document.getElementById('guess-wins').textContent = wins;
+    input.disabled = true;
+    return;
+  }
+  
+  if (tries >= maxTries) {
+    result.textContent = `❌ Не угадал. Было число ${secret}`;
+    result.style.color = '#ef4444';
+    input.disabled = true;
+    return;
+  }
+  
+  if (val < secret) {
+    result.textContent = `⬆️ Больше. Попытка ${tries} / ${maxTries}`;
+  } else {
+    result.textContent = `⬇️ Меньше. Попытка ${tries} / ${maxTries}`;
+  }
+  input.value = '';
+  input.focus();
+}
+
+// ===== КЛИКЕР =====
+function startClicker() {
+  const best = parseInt(localStorage.getItem('clicker_best') || '0');
+  document.getElementById('clicker-best').textContent = best;
+  
+  let clicks = 0;
+  let timeLeft = 10;
+  let started = false;
+  
+  openModal(`
+    <div class="game-modal">
+      <h3>⚡ Кликер</h3>
+      <p class="sub">Успей кликнуть 50 раз за 10 секунд</p>
+      <div class="game-hud">
+        <div class="hud-item">Клики: <b id="clicker-score">0</b></div>
+        <div class="hud-item">Время: <b id="clicker-time">10</b>с</div>
+      </div>
+      <div class="game-area">
+        <button class="clicker-btn" id="clicker-btn">ЖМИ</button>
+      </div>
+      <button class="btn btn-block" style="margin-top:12px;" onclick="closeGame()">Закрыть</button>
+    </div>
+  `, { lockBackdrop: true });
+  
+  setTimeout(() => {
+    const btn = document.getElementById('clicker-btn');
+    if (!btn) return;
+    
+    btn.onclick = () => {
+      if (!started) {
+        started = true;
+        gameInterval = setInterval(() => {
+          timeLeft--;
+          document.getElementById('clicker-time').textContent = timeLeft;
+          if (timeLeft <= 0) {
+            clearInterval(gameInterval);
+            endClicker(clicks);
+          }
+        }, 1000);
+      }
+      
+      clicks++;
+      document.getElementById('clicker-score').textContent = clicks;
+      
+      if (clicks >= 50) {
+        clearInterval(gameInterval);
+        endClicker(clicks);
+      }
+    };
+  }, 100);
+}
+
+function endClicker(clicks) {
+  const btn = document.getElementById('clicker-btn');
+  const best = parseInt(localStorage.getItem('clicker_best') || '0');
+  
+  if (clicks > best) {
+    localStorage.setItem('clicker_best', clicks);
+    document.getElementById('clicker-best').textContent = clicks;
+    toast(`🏆 Новый рекорд: ${clicks}!`);
+  } else if (clicks >= 50) {
+    toast(`✅ Победа! ${clicks} кликов`);
+  } else {
+    toast(`Время вышло. Кликов: ${clicks}`);
+  }
+  
+  if (btn) {
+    btn.textContent = clicks >= 50 ? '✅' : '⏱';
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+  }
+}
