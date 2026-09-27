@@ -1262,8 +1262,7 @@ function initFormHandlers() {
   const btn = document.getElementById('nav-auth-btn');
   if (btn) btn.onclick = () => { currentUser ? doLogout() : go('auth'); };
 }
-// ===== ЗАПУСК =====
-// ===== СЧЁТЧИК ИГРОКОВ =====
+// ===== ЗАПУСК =====// ===== СЧЁТЧИК ИГРОКОВ =====
 async function updatePlayersCounter() {
   try {
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -1298,17 +1297,12 @@ async function updatePlayersCounter() {
     const totalEl = document.getElementById('total-players');
     const onlineEl = document.getElementById('online-players');
 
-  if (totalEl) totalEl.textContent = maxOnline;
-  if (onlineEl) onlineEl.textContent = currentOnline;
+    if (totalEl) totalEl.textContent = maxOnline;
+    if (onlineEl) onlineEl.textContent = currentOnline;
   } catch (err) {
     console.error('Ошибка счётчика:', err);
-  }                                    ← закрывает catch
-  }                                    ← закрывает функцию updatePlayersCounter
-  
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(updatePlayersCounter, 500);
-    setInterval(updatePlayersCounter, 30000);
-  });
+  }
+}
 
 // ===== РЕДАКТИРОВАНИЕ ПРОФИЛЯ =====
 async function editProfile() {
@@ -1369,6 +1363,7 @@ async function saveProfile() {
   closeModal();
   renderProfile();
 }
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   initFormHandlers();
