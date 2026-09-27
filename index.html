@@ -200,13 +200,23 @@
 
   <!-- ===== ПРОФИЛЬ ===== -->
   <section id="page-profile" class="page">
-    <div class="profile-head">
-      <div class="avatar" id="pf-avatar">?</div>
-      <div class="profile-info">
-        <h2 id="pf-nick">Гость</h2>
-        <div class="meta" id="pf-email">Войди в аккаунт</div>
-      </div>
+<div class="profile-head">
+  <div class="avatar" id="pf-avatar">?</div>
+  <div class="profile-info">
+    <h2>
+      <span id="pf-status-dot" class="status-dot status-offline"></span>
+      <span id="pf-nick">Гость</span>
+    </h2>
+    <div class="meta" id="pf-email">Войди в аккаунт</div>
+    <div style="margin-top:10px;">
+      <select id="pf-status-select" class="status-select" onchange="setStatus(this.value)">
+        <option value="online">🟢 Онлайн</option>
+        <option value="away">🟡 Отошёл</option>
+        <option value="offline">⚫ Оффлайн</option>
+      </select>
     </div>
+  </div>
+</div>
     <div class="stats">
       <div class="stat"><div class="label" data-i18n="pf_elo">ЭЛО</div><div class="value" id="pf-elo">—</div></div>
       <div class="stat"><div class="label" data-i18n="pf_role">Роль</div><div class="value" id="pf-role">—</div></div>
