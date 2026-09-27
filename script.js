@@ -2543,3 +2543,23 @@ function endClicker(clicks) {
     btn.style.opacity = '0.5';
   }
 }
+
+
+
+// ===== СТАТИСТИКА ИГР =====
+function updateGamesStats() {
+  const snakeBest = localStorage.getItem('snake_best') || '0';
+  const reactionBest = localStorage.getItem('reaction_best');
+  const guessWins = localStorage.getItem('guess_wins') || '0';
+  const clickerBest = localStorage.getItem('clicker_best') || '0';
+  
+  const el1 = document.getElementById('snake-best');
+  const el2 = document.getElementById('reaction-best');
+  const el3 = document.getElementById('guess-wins');
+  const el4 = document.getElementById('clicker-best');
+  
+  if (el1) el1.textContent = snakeBest;
+  if (el2) el2.textContent = reactionBest ? reactionBest + ' мс' : '—';
+  if (el3) el3.textContent = guessWins;
+  if (el4) el4.textContent = clickerBest;
+}
