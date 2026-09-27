@@ -75,10 +75,16 @@ function toast(msg) {
 }
 
 // ===== МОДАЛКА =====
-function openModal(html) {
+function openModal(html, options = {}) {
   const el = document.getElementById('modal-content');
   if (el) el.innerHTML = html;
-  document.getElementById('modal-bg').classList.add('show');
+  const bg = document.getElementById('modal-bg');
+  bg.classList.add('show');
+  if (options.lockBackdrop) {
+    bg.classList.add('modal-locked');
+  } else {
+    bg.classList.remove('modal-locked');
+  }
 }
 function closeModal() {
   document.getElementById('modal-bg').classList.remove('show');
