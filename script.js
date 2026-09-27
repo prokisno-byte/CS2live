@@ -1378,7 +1378,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function createParticles() {
-    const count = Math.min(80, Math.floor((w * h) / 40000));
+    const count = Math.min(80, Math.floor((w * h) / 15000));
     particles = [];
     for (let i = 0; i < count; i++) {
       particles.push({
