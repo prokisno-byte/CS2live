@@ -2143,19 +2143,27 @@ document.addEventListener('click', function unlockAudio() {
     audioCtx.resume();
   }
 }, { once: true });
-    const freq = freqs[type] || 600;
-    osc.frequency.setValueAtTime(freq, now);
-    osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.1);
-    osc.type = 'sine';
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-    osc.start(now);
-    osc.stop(now + 0.2);
-  } catch (e) {
-    console.error('Ошибка звука:', e);
+// Разблокировка аудио при первом клике
+document.addEventListener('click', function unlockAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-}
-// ===== ОБНОВЛЕНИЕ DOMContentLoaded =====
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}, { once: true });
+// ===== ЗАПУСК =====
+document.addEventListener('DOMContentLoaded', async () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+  initFormHandlers();
+  await checkSession();
+  updateAuthUI();
+  await renderTeams();
+  await renderInvites();
+  await renderFriends();
+  await renderProfile();
+  go('home');
+});
 // Добавляем в существующий DOMContentLoaded (НЕ создаём новый)
 
 
