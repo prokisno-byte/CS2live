@@ -92,6 +92,7 @@ function closeModal() {
 
 // ===== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ =====
 function go(page) {
+  if (page === 'leaderboard') renderLeaderboard();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
@@ -1168,6 +1169,7 @@ async function checkSession() {
     setTimeout(startHeartbeat, 500);
     setTimeout(updateFriendsBadge, 800);
     setTimeout(updateMessagesBadge, 1000);
+      setTimeout(updateNotifBadge, 1500);
   }
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     console.log('Auth event:', event);
@@ -1198,6 +1200,8 @@ async function renderProfile() {
   const statusEl = document.getElementById('pf-status');
   const grid = document.getElementById('profile-grid');
   if (!nickEl) return;
+  renderAchievements();
+  checkAchievements();
 
   if (!currentUser) {
     nickEl.textContent = 'Гость';
@@ -1374,6 +1378,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderFriends();
   await renderProfile();
   go('home');
+     // Инициализация звука
+  const soundBtn = document.getElementById('sound-toggle');
+  if (soundBtn) {
+    soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+    soundBtn.classList.toggle('muted', !soundEnabled);
+  }
+  
+  // Проверка уведомлений
+  if (currentUser) {
+    setTimeout(updateNotifBadge, 2000);
+    setInterval(updateNotifBadge, 60000);
+  }
 });
 
 
@@ -1736,3 +1752,377 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(updatePlayersCounter, 500);
   setInterval(updatePlayersCounter, 30000);
 });
+
+
+
+// =========================================================
+// ЧАСТЬ 3 — ВСЕ ФИЧИ
+// =========================================================
+
+// ===== УВЕДОМЛЕНИЯ =====
+let notifPanelOpen = false;
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  if (!panel) return;
+  notifPanelOpen = !notifPanelOpen;
+  panel.classList.toggle('show', notifPanelOpen);
+  if (notifPanelOpen) loadNotifications();
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  
+  if (!currentUser) {
+    list.innerHTML = '<div class="empty">Войди в аккаунт</div>';
+    return;
+  }
+  
+  const { data, error } = await supabaseClient
+    .from('notifications')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  
+  if (error || !data || data.length === 0) {
+    list.innerHTML = '<div class="empty">Пока нет уведомлений</div>';
+    return;
+  }
+  
+  list.innerHTML = data.map(n => {
+    const time = formatTimeAgo(n.created_at);
+    return `
+      <div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="readNotif('${n.id}', '${n.link || ''}')">
+        <div class="notif-title">${escapeHtml(n.title)}</div>
+        ${n.body ? `<div class="notif-body">${escapeHtml(n.body)}</div>` : ''}
+        <div class="notif-time">${time}</div>
+      </div>
+    `;
+  }).join('');
+  
+  updateNotifBadge();
+}
+
+async function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge || !currentUser) {
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  
+  const { count } = await supabaseClient
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', currentUser.id)
+    .eq('is_read', false);
+  
+  if ((count || 0) > 0) {
+    badge.textContent = count > 99 ? '99+' : count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function readNotif(id, link) {
+  await supabaseClient
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', id);
+  
+  if (link && typeof go === 'function') {
+    toggleNotifPanel();
+    go(link);
+  }
+  loadNotifications();
+}
+
+function formatTimeAgo(isoString) {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'только что';
+  if (mins < 60) return mins + ' мин назад';
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + ' ч назад';
+  const days = Math.floor(hours / 24);
+  return days + ' дн назад';
+}
+
+// ===== РЕЙТИНГ ИГРОКОВ =====
+async function renderLeaderboard() {
+  const list = document.getElementById('leaderboard-list');
+  if (!list) return;
+  
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id, nick, elo, role, avatar')
+    .order('elo', { ascending: false })
+    .limit(20);
+  
+  if (error || !data || data.length === 0) {
+    list.innerHTML = '<div class="empty">Пока нет игроков</div>';
+    return;
+  }
+  
+  const medals = ['🥇', '🥈', '🥉'];
+  
+  list.innerHTML = data.map((p, i) => {
+    const rank = i + 1;
+    const topClass = rank <= 3 ? `top-${rank}` : '';
+    const medal = medals[i] || rank;
+    
+    return `
+      <div class="leader-item ${topClass}" onclick="openUserProfile('${p.id}')">
+        <div class="leader-rank">${medal}</div>
+        <div class="leader-info">
+          <div class="leader-nick">${escapeHtml(p.nick)}</div>
+          <div class="leader-role">${p.role || 'Rifler'}</div>
+        </div>
+        <div class="leader-elo">${p.elo}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== ПОИСК ИГРОКОВ =====
+let searchTimeout = null;
+
+function searchPlayers(query) {
+  clearTimeout(searchTimeout);
+  
+  const results = document.getElementById('search-results');
+  if (!results) return;
+  
+  if (!query || query.length < 2) {
+    results.innerHTML = '';
+    return;
+  }
+  
+  searchTimeout = setTimeout(async () => {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('id, nick, elo, role, avatar')
+      .ilike('nick', `%${query}%`)
+      .limit(10);
+    
+    if (error || !data || data.length === 0) {
+      results.innerHTML = '<div class="empty">Никого не найдено</div>';
+      return;
+    }
+    
+    results.innerHTML = data.map(p => `
+      <div class="friend-row" onclick="openUserProfile('${p.id}')" style="cursor:pointer;">
+        <div class="friend-info">
+          <div>
+            <div class="name">${escapeHtml(p.nick)}</div>
+            <div class="sub">${p.elo} ELO • ${p.role || 'Rifler'}</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }, 300);
+}
+
+// ===== АВАТАРКИ =====
+const AVATAR_EMOJIS = [
+  '😎', '🥷', '👻', '🐺', '🦅', '🐉',
+  '🔥', '⚡', '💀', '🎯', '🎮', '🚀',
+  '👾', '🤖', '🦁', '🐯', '🦈', '🐻'
+];
+
+async function changeAvatar() {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+  
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('avatar')
+    .eq('id', currentUser.id)
+    .single();
+  
+  const currentAvatar = profile?.avatar || '';
+  
+  openModal(`
+    <h3>Сменить аватар</h3>
+    <p class="sub">Выбери иконку профиля</p>
+    
+    <div class="avatar-picker">
+      ${AVATAR_EMOJIS.map(emoji => `
+        <div class="avatar-option ${emoji === currentAvatar ? 'selected' : ''}" onclick="selectAvatar('${emoji}')">
+          ${emoji}
+        </div>
+      `).join('')}
+    </div>
+    
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="closeModal()">Готово</button>
+  `, { lockBackdrop: true });
+}
+
+async function selectAvatar(emoji) {
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ avatar: emoji })
+    .eq('id', currentUser.id);
+  
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  
+  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.avatar-option').forEach(el => {
+    if (el.textContent.trim() === emoji) el.classList.add('selected');
+  });
+  
+  const avatarEl = document.getElementById('pf-avatar');
+  if (avatarEl) avatarEl.textContent = emoji;
+  
+  toast('Аватар обновлён!');
+  window._nickCache = {};
+}
+
+// ===== ДОСТИЖЕНИЯ =====
+const ACHIEVEMENTS = [
+  { code: 'first_team', icon: '🎯', title: 'Первая команда', desc: 'Создал первую команду' },
+  { code: 'social', icon: '👥', title: 'Социальный', desc: '5 друзей' },
+  { code: 'chatty', icon: '💬', title: 'Болтун', desc: '10 сообщений' },
+  { code: 'veteran', icon: '🏆', title: 'Ветеран', desc: 'На сайте 7 дней' },
+  { code: 'high_elo', icon: '⚡', title: 'Про', desc: 'ELO 4000+' },
+  { code: 'popular', icon: '⭐', title: 'Популярный', desc: 'Получил 10 друзей' }
+];
+
+async function checkAchievements() {
+  if (!currentUser) return;
+  
+  const { data: existing } = await supabaseClient
+    .from('achievements')
+    .select('code')
+    .eq('user_id', currentUser.id);
+  
+  const unlocked = new Set((existing || []).map(a => a.code));
+  
+  // Проверяем условия
+  const { count: teamsCount } = await supabaseClient
+    .from('team_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', currentUser.id);
+  
+  const { count: friendsCount } = await supabaseClient
+    .from('friendships')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'accepted')
+    .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`);
+  
+  const toUnlock = [];
+  
+  if ((teamsCount || 0) >= 1 && !unlocked.has('first_team')) toUnlock.push('first_team');
+  if ((friendsCount || 0) >= 5 && !unlocked.has('social')) toUnlock.push('social');
+  if ((friendsCount || 0) >= 10 && !unlocked.has('popular')) toUnlock.push('popular');
+  if (currentUser.elo >= 4000 && !unlocked.has('high_elo')) toUnlock.push('high_elo');
+  
+  for (const code of toUnlock) {
+    const ach = ACHIEVEMENTS.find(a => a.code === code);
+    if (!ach) continue;
+    
+    await supabaseClient.from('achievements').insert({
+      user_id: currentUser.id,
+      code: ach.code,
+      title: ach.title,
+      description: ach.desc,
+      icon: ach.icon
+    });
+    
+    toast(`🏆 Достижение: ${ach.title}!`);
+  }
+}
+
+async function renderAchievements() {
+  const grid = document.getElementById('achievements-grid');
+  if (!grid) return;
+  
+  if (!currentUser) {
+    grid.innerHTML = '<div class="empty">Войди в аккаунт</div>';
+    return;
+  }
+  
+  const { data } = await supabaseClient
+    .from('achievements')
+    .select('*')
+    .eq('user_id', currentUser.id);
+  
+  const unlocked = new Set((data || []).map(a => a.code));
+  
+  grid.innerHTML = ACHIEVEMENTS.map(ach => {
+    const isUnlocked = unlocked.has(ach.code);
+    return `
+      <div class="achievement ${isUnlocked ? '' : 'locked'}" title="${ach.desc}">
+        <div class="ach-icon">${ach.icon}</div>
+        <div class="ach-title">${ach.title}</div>
+        <div class="ach-desc">${isUnlocked ? 'Открыто' : ach.desc}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== СТАТУС "ИЩУ КОМАНДУ" =====
+async function toggleLookingForTeam() {
+  if (!currentUser) return;
+  
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('looking_for_team')
+    .eq('id', currentUser.id)
+    .single();
+  
+  const newValue = !profile?.looking_for_team;
+  
+  await supabaseClient
+    .from('profiles')
+    .update({ looking_for_team: newValue })
+    .eq('id', currentUser.id);
+  
+  toast(newValue ? '🔍 Ты в поиске команды' : 'Поиск команды выключен');
+  renderProfile();
+}
+
+// ===== ЗВУКИ =====
+let soundEnabled = localStorage.getItem('sound') !== 'off';
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('sound', soundEnabled ? 'on' : 'off');
+  
+  const btn = document.getElementById('sound-toggle');
+  if (btn) {
+    btn.textContent = soundEnabled ? '🔊' : '🔇';
+    btn.classList.toggle('muted', !soundEnabled);
+  }
+  
+  toast(soundEnabled ? 'Звук включён' : 'Звук выключен');
+}
+
+function playSound(type) {
+  if (!soundEnabled) return;
+  
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    const freqs = { click: 800, success: 1200, error: 300, message: 600 };
+    const freq = freqs[type] || 600;
+    
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (e) {}
+}
+
+// ===== ОБНОВЛЕНИЕ DOMContentLoaded =====
+// Добавляем в существующий DOMContentLoaded (НЕ создаём новый)
