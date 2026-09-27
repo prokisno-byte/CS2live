@@ -2563,3 +2563,4 @@ function updateGamesStats() {
   if (el3) el3.textContent = guessWins;
   if (el4) el4.textContent = clickerBest;
 }
+updateGamesStats
