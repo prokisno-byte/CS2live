@@ -17,6 +17,29 @@
     <span>Team Search <span class="dim">CS2</span></span>
   </div>
   <nav>
+          <div class="players-counter" id="players-counter">
+        <span class="counter-item" title="Максимум онлайн за всё время">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2.5"/>
+            <circle cx="5" cy="8" r="2"/>
+            <circle cx="19" cy="8" r="2"/>
+            <path d="M12 9c-2 0-3.5 1.5-3.5 3.5V15h7v-2.5C15.5 10.5 14 9 12 9z"/>
+            <path d="M5 11c-1.5 0-2.5 1-2.5 2.5V16h4v-2.5C6.5 12 6 11 5 11z"/>
+            <path d="M19 11c-1.5 0-2.5 1-2.5 2.5V16h4v-2.5C20.5 12 20 11 19 11z"/>
+          </svg>
+          <span id="total-players">—</span>
+        </span>
+        <span class="counter-item counter-online" title="Онлайн сейчас">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <ellipse cx="12" cy="12" rx="4" ry="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <line x1="4" y1="7" x2="20" y2="7"/>
+            <line x1="4" y1="17" x2="20" y2="17"/>
+          </svg>
+          <span id="online-players">—</span>
+        </span>
+      </div>
     <div class="lang-switch">
       <button id="lang-ru" class="active" onclick="setLang('ru')">RU</button>
       <button id="lang-en" onclick="setLang('en')">EN</button>
