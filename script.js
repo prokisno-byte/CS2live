@@ -1189,7 +1189,7 @@ async function checkSession() {
   });
 }
 
-async function renderProfile() {
+avatarEl.textContent = currentUser.avatar || currentUser.nick[0].toUpperCase();
   const nickEl = document.getElementById('pf-nick');
   const emailEl = document.getElementById('pf-email');
   const avatarEl = document.getElementById('pf-avatar');
@@ -1924,60 +1924,6 @@ function searchPlayers(query) {
   }, 300);
 }
 
-// ===== АВАТАРКИ =====
-const AVATAR_EMOJIS = [
-  '😎', '🥷', '👻', '🐺', '🦅', '🐉',
-  '🔥', '⚡', '💀', '🎯', '🎮', '🚀',
-  '👾', '🤖', '🦁', '🐯', '🦈', '🐻'
-];
-
-async function changeAvatar() {
-  if (!currentUser) { toast('Войди в аккаунт'); return; }
-  
-  const { data: profile } = await supabaseClient
-    .from('profiles')
-    .select('avatar')
-    .eq('id', currentUser.id)
-    .single();
-  
-  const currentAvatar = profile?.avatar || '';
-  
-  openModal(`
-    <h3>Сменить аватар</h3>
-    <p class="sub">Выбери иконку профиля</p>
-    
-    <div class="avatar-picker">
-      ${AVATAR_EMOJIS.map(emoji => `
-        <div class="avatar-option ${emoji === currentAvatar ? 'selected' : ''}" onclick="selectAvatar('${emoji}')">
-          ${emoji}
-        </div>
-      `).join('')}
-    </div>
-    
-    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="closeModal()">Готово</button>
-  `, { lockBackdrop: true });
-}
-
-async function selectAvatar(emoji) {
-  const { error } = await supabaseClient
-    .from('profiles')
-    .update({ avatar: emoji })
-    .eq('id', currentUser.id);
-  
-  if (error) { toast('Ошибка: ' + error.message); return; }
-  
-  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
-  document.querySelectorAll('.avatar-option').forEach(el => {
-    if (el.textContent.trim() === emoji) el.classList.add('selected');
-  });
-  
-  const avatarEl = document.getElementById('pf-avatar');
-  if (avatarEl) avatarEl.textContent = emoji;
-  
-  toast('Аватар обновлён!');
-  window._nickCache = {};
-}
-
 // ===== ДОСТИЖЕНИЯ =====
 const ACHIEVEMENTS = [
   { code: 'first_team', icon: '🎯', title: 'Первая команда', desc: 'Создал первую команду' },
@@ -2564,3 +2510,154 @@ function updateGamesStats() {
   if (el4) el4.textContent = clickerBest;
 }
 updateGamesStats
+
+
+
+// ===== АВАТАРКИ (ПЕРЕПИСАНО) =====
+const AVATAR_EMOJIS = ['😎','🥷','👻','🐺','🦅','🐉','🔥','⚡','💀','🎯','🎮','🚀','👾','🤖','🦁','🐯','🦈','🐻'];
+
+async function changeAvatar() {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+  
+  // Берём текущий аватар из currentUser (или пусто)
+  const currentAvatar = currentUser.avatar || '';
+  
+  openModal(`
+    <h3>🖼️ Сменить аватар</h3>
+    <p class="sub">Выбери иконку профиля</p>
+    
+    <div class="avatar-picker">
+      ${AVATAR_EMOJIS.map(emoji => `
+        <div class="avatar-option ${emoji === currentAvatar ? 'selected' : ''}" 
+             onclick="selectAvatar('${emoji}')">
+          ${emoji}
+        </div>
+      `).join('')}
+    </div>
+    
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="closeModal()">Готово</button>
+  `, { lockBackdrop: true });
+}
+
+async function selectAvatar(emoji) {
+  if (!currentUser) return;
+  
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ avatar: emoji })
+    .eq('id', currentUser.id);
+  
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  
+  // Обновляем в currentUser
+  currentUser.avatar = emoji;
+  
+  // Обновляем UI
+  document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.avatar-option').forEach(el => {
+    if (el.textContent.trim() === emoji) el.classList.add('selected');
+  });
+  
+  const avatarEl = document.getElementById('pf-avatar');
+  if (avatarEl) avatarEl.textContent = emoji;
+  
+  toast('Аватар обновлён!');
+}
+
+// ===== РЕДАКТИРОВАНИЕ ПРОФИЛЯ (ПЕРЕПИСАНО) =====
+async function editProfile() {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+  
+  const nick = currentUser.nick || '';
+  const elo = currentUser.elo || 0;
+  const role = currentUser.role || 'Rifler';
+  const bio = currentUser.bio || '';
+  const region = currentUser.region || 'EU';
+  const looking = currentUser.looking_for_team || false;
+  
+  openModal(`
+    <h3>✏️ Редактировать профиль</h3>
+    <p class="sub">Измени свои данные</p>
+    
+    <div class="field">
+      <label>Никнейм</label>
+      <input type="text" id="edit-nick" value="${escapeHtml(nick)}" maxlength="20">
+    </div>
+    
+    <div class="field">
+      <label>ЭЛО (0–5000)</label>
+      <input type="number" id="edit-elo" min="0" max="5000" value="${elo}">
+    </div>
+    
+    <div class="field">
+      <label>Роль</label>
+      <select id="edit-role">
+        <option value="Rifler" ${role === 'Rifler' ? 'selected' : ''}>Rifler</option>
+        <option value="IGL" ${role === 'IGL' ? 'selected' : ''}>IGL</option>
+        <option value="AWPer" ${role === 'AWPer' ? 'selected' : ''}>AWPer</option>
+        <option value="Entry" ${role === 'Entry' ? 'selected' : ''}>Entry</option>
+        <option value="Support" ${role === 'Support' ? 'selected' : ''}>Support</option>
+        <option value="Lurker" ${role === 'Lurker' ? 'selected' : ''}>Lurker</option>
+      </select>
+    </div>
+    
+    <div class="field">
+      <label>Регион</label>
+      <select id="edit-region">
+        <option value="EU" ${region === 'EU' ? 'selected' : ''}>Europe</option>
+        <option value="UA" ${region === 'UA' ? 'selected' : ''}>Ukraine</option>
+        <option value="RU" ${region === 'RU' ? 'selected' : ''}>Russia</option>
+        <option value="NA" ${region === 'NA' ? 'selected' : ''}>North America</option>
+        <option value="ASIA" ${region === 'ASIA' ? 'selected' : ''}>Asia</option>
+      </select>
+    </div>
+    
+    <div class="field">
+      <label>О себе (bio, до 150 симв.)</label>
+      <textarea id="edit-bio" maxlength="150" placeholder="Кратко о себе...">${escapeHtml(bio)}</textarea>
+    </div>
+    
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:12px 0;">
+      <input type="checkbox" id="edit-looking" ${looking ? 'checked' : ''} style="width:auto;">
+      <span style="font-size:13px;">🔍 Ищу команду</span>
+    </label>
+    
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="saveProfile()">Сохранить</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Отмена</button>
+  `, { lockBackdrop: true });
+}
+
+async function saveProfile() {
+  if (!currentUser) return;
+  
+  const nick = document.getElementById('edit-nick').value.trim();
+  const elo = parseInt(document.getElementById('edit-elo').value, 10) || 0;
+  const role = document.getElementById('edit-role').value;
+  const region = document.getElementById('edit-region').value;
+  const bio = document.getElementById('edit-bio').value.trim();
+  const looking = document.getElementById('edit-looking').checked;
+  
+  if (!nick || nick.length < 3) { toast('Ник минимум 3 символа'); return; }
+  if (elo < 0 || elo > 5000) { toast('ЭЛО от 0 до 5000'); return; }
+  
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ nick, elo, role, region, bio, looking_for_team: looking })
+    .eq('id', currentUser.id);
+  
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  
+  // Обновляем локально
+  currentUser.nick = nick;
+  currentUser.elo = elo;
+  currentUser.role = role;
+  currentUser.region = region;
+  currentUser.bio = bio;
+  currentUser.looking_for_team = looking;
+  
+  window._nickCache[currentUser.id] = nick;
+  
+  toast('Профиль обновлён!');
+  closeModal();
+  renderProfile();
+}
