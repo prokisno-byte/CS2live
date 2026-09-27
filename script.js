@@ -2143,6 +2143,10 @@ document.addEventListener('click', function unlockAudio() {
     audioCtx.resume();
   }
 }, { once: true });
+function playSound(type) {
+  ... // твоя функция
+}
+
 // Разблокировка аудио при первом клике
 document.addEventListener('click', function unlockAudio() {
   if (!audioCtx) {
@@ -2152,12 +2156,18 @@ document.addEventListener('click', function unlockAudio() {
     audioCtx.resume();
   }
 }, { once: true });
+
 // ===== ЗАПУСК =====
 document.addEventListener('DOMContentLoaded', async () => {
-  document.addEventListener('DOMContentLoaded', async () => {
   initFormHandlers();
   await checkSession();
   updateAuthUI();
+  await renderTeams();
+  await renderInvites();
+  await renderFriends();
+  await renderProfile();
+  go('home');
+});
   await renderTeams();
   await renderInvites();
   await renderFriends();
