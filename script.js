@@ -1457,3 +1457,97 @@ function openChat(userId) {
   toast('Чат появится в следующем обновлении');
   console.log('Открыть чат с:', userId);
 }
+
+
+
+// ===== ЧАТ КОМАНДЫ =====
+let chatInterval = null;
+
+async function loadTeamChat(teamId) {
+  const container = document.getElementById('team-chat-messages');
+  if (!container) return;
+
+  const { data: messages, error } = await supabaseClient
+    .from('messages')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: true })
+    .limit(100);
+
+  if (error) {
+    console.error('Ошибка загрузки чата:', error);
+    container.innerHTML = '<div class="empty">Ошибка загрузки сообщений</div>';
+    return;
+  }
+
+  // Загружаем ники отправителей
+  const senderIds = [...new Set((messages || []).map(m => m.sender_id))];
+  const { data: profiles } = senderIds.length
+    ? await supabaseClient.from('profiles').select('id, nick').in('id', senderIds)
+    : { data: [] };
+
+  const nickById = {};
+  (profiles || []).forEach(p => { nickById[p.id] = p.nick; });
+
+  if (!messages || messages.length === 0) {
+    container.innerHTML = '<div class="empty" style="margin:auto;">Сообщений пока нет. Напиши первое!</div>';
+    return;
+  }
+
+  container.innerHTML = messages.map(m => {
+    const isOwn = currentUser && m.sender_id === currentUser.id;
+    const nick = isOwn ? 'Ты' : (nickById[m.sender_id] || 'Unknown');
+    const time = new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    return `
+      <div class="chat-msg ${isOwn ? 'own' : 'other'}">
+        <div class="author">${escapeHtml(nick)}</div>
+        <div>${escapeHtml(m.text)}</div>
+        <div class="time">${time}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Скролл вниз
+  container.scrollTop = container.scrollHeight;
+
+  // Запускаем автообновление
+  if (chatInterval) clearInterval(chatInterval);
+  chatInterval = setInterval(() => {
+    if (document.getElementById('team-chat-messages')) {
+      loadTeamChat(teamId);
+    } else {
+      clearInterval(chatInterval);
+      chatInterval = null;
+    }
+  }, 5000);
+}
+
+async function sendTeamMessage(teamId) {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+
+  const input = document.getElementById('team-chat-input');
+  if (!input) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+
+  const { error } = await supabaseClient
+    .from('messages')
+    .insert({
+      sender_id: currentUser.id,
+      team_id: teamId,
+      text: text
+    });
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  // Загружаем сразу
+  loadTeamChat(teamId);
+}
