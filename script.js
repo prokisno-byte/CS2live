@@ -1134,7 +1134,13 @@ async function doLogout() {
   go('home');
 }
 
-function discordAuth() { toast('Discord OAuth позже'); }
+async function discordAuth() {
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'discord',
+    options: { redirectTo: window.location.origin }
+  });
+  if (error) toast('Ошибка: ' + error.message);
+}
 
 function updateAuthUI() {
   const btn = document.getElementById('nav-auth-btn');
