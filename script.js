@@ -375,7 +375,23 @@ async function showTeam(id) {
       <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Состав (${memberIds.length}/${t.slots})</div>
       <div style="font-size:14px;">${memberNames.map(n => '• ' + escapeHtml(n)).join('<br>') || 'Пока никого'}</div>
     </div>
+} else if (isOwner) {
+  const { data: activeDiss } = await supabaseClient
+    .from('team_dissolutions')
+    .select('id')
+    .eq('team_id', t.id)
+    .eq('status', 'active')
+    .maybeSingle();
 
+  if (activeDiss) {
+    actionBtn = `<button class="btn btn-block" disabled style="opacity:0.5;cursor:default;">Голосование идёт</button>`;
+  } else {
+    actionBtn = `
+      <button class="btn btn-block" disabled style="opacity:0.5;cursor:default;margin-bottom:8px;">Это ваша команда</button>
+      <button class="btn btn-block" style="border-color:#553333;color:#ff6666;" onclick="startDissolution('${t.id}')">Распустить команду</button>
+    `;
+  }
+}
     ${actionBtn}
     <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Закрыть</button>
   `);
