@@ -1295,7 +1295,7 @@ async function editProfile() {
 
     <button class="btn btn-primary btn-block" onclick="saveProfile()">Сохранить</button>
     <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Отмена</button>
-  , { lockBackdrop: true });
+ `, { lockBackdrop: true });
 }
 
 async function saveProfile() {
