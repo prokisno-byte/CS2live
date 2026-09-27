@@ -2102,8 +2102,7 @@ function toggleSound() {
 function playSound(type) {
   if (!soundEnabled) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    ...
+    const ctx = new (window.AudioContext || window.webkitAudioContext)(); ...
   } catch (e) {}
 }
 // ===== ОБНОВЛЕНИЕ DOMContentLoaded =====
