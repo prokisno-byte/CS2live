@@ -1381,3 +1381,243 @@ header, main, footer, .modal-bg, .toast {
 .modal [style*="font-size:14px"] {
   font-size: 12px !important;
 }
+
+
+/* ===== ЛЮТЫЕ АНИМАЦИИ ===== */
+
+/* Магнитные кнопки */
+.btn {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 
+    0 15px 35px rgba(255, 255, 255, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Свечение, следующее за курсором */
+.cursor-glow {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 170, 40, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s;
+  will-change: transform;
+}
+
+/* 3D-tilt карточек */
+.card {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s, border-color 0.3s;
+}
+
+.card-inner {
+  transition: transform 0.1s;
+  transform-style: preserve-3d;
+}
+
+.card:hover {
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 170, 40, 0.3),
+    0 0 40px rgba(255, 170, 40, 0.1);
+}
+
+/* Плавный скролл */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Загрузка — прогресс-бар */
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff8c1e 0%, #ffc83c 50%, #ff8c1e 100%);
+  z-index: 9999;
+  box-shadow: 0 0 20px rgba(255, 170, 40, 0.8);
+  transition: width 0.4s ease, opacity 0.4s ease;
+}
+
+.loading-bar.done {
+  width: 100% !important;
+  opacity: 0;
+}
+
+/* Взрыв частиц при клике */
+.click-particle {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffc83c 0%, #ff8c1e 100%);
+  pointer-events: none;
+  z-index: 9998;
+  box-shadow: 0 0 10px rgba(255, 170, 40, 0.8);
+  animation: particleBurst 0.8s ease-out forwards;
+}
+
+@keyframes particleBurst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Эффект появления текста (для главной) */
+@keyframes textReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.hero h1 {
+  animation: textReveal 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hero p {
+  animation: textReveal 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+.hero-actions {
+  animation: textReveal 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both;
+}
+
+/* Пульсация аватара */
+@keyframes avatarPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 170, 40, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 170, 40, 0);
+  }
+}
+
+.avatar {
+  animation: avatarPulse 3s infinite;
+}
+
+/* Свечение под лого */
+.logo-mark {
+  position: relative;
+}
+
+.logo-mark::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff8c1e, #ffc83c, #ff8c1e);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+  filter: blur(8px);
+}
+
+.logo:hover .logo-mark::after {
+  opacity: 0.6;
+}
+
+/* Пульсация кнопки "Создать команду" */
+@keyframes buttonGlow {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 0 rgba(255, 200, 60, 0.5),
+      0 6px 20px rgba(255, 200, 60, 0.3);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 10px rgba(255, 200, 60, 0),
+      0 6px 30px rgba(255, 200, 60, 0.5);
+  }
+}
+
+.btn-primary {
+  animation: buttonGlow 2.5s infinite;
+}
+
+/* Плавное появление карточек каскадом */
+.card {
+  animation: cardAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+/* "Бегущая" подсветка на активной вкладке */
+@keyframes tabShine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.team-tab.active {
+  background: linear-gradient(
+    90deg,
+    var(--white) 0%,
+    var(--white) 40%,
+    #ffc83c 50%,
+    var(--white) 60%,
+    var(--white) 100%
+  );
+  background-size: 200% auto;
+  animation: tabShine 3s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Hover на ссылки с подчёркиванием */
+.member-link {
+  position: relative;
+  transition: color 0.2s;
+}
+
+.member-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, #ff8c1e, #ffc83c);
+  transition: width 0.3s;
+}
+
+.member-link:hover::after {
+  width: 100%;
+}
+
+/* Модалка — выезжает снизу */
+@keyframes modalSlide {
+  from {
+    opacity: 0;
+    transform: translateY(60px) scale(0.9);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.modal-bg.show .modal {
+  animation: modalSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
