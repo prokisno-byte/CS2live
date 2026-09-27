@@ -1,12 +1,14 @@
 /* =========================================================
-   TEAM SEARCH CS2 — Часть 1: база
+   TEAM SEARCH CS2
    ========================================================= */
-// ===== ПОДКЛЮЧЕНИЕ SUPABASE =====
+
+// ===== SUPABASE =====
 const SUPABASE_URL = 'https://tuhvornfjgbhdygbpoou.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aHZvcm5mamdiaGR5Z2Jwb291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NzY1NzAsImV4cCI6MjEwNjA1MjU3MH0.CIuKaG3fEFTV3_VHH7JwLVbJ5HTbhxOdbReSj7LiiAA';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 console.log('Supabase подключён:', SUPABASE_URL);
-// ===== ХРАНИЛИЩЕ (localStorage) =====
+
+// ===== ХРАНИЛИЩЕ =====
 const DB = {
   get(key, fallback = null) {
     try {
@@ -21,12 +23,8 @@ const DB = {
   }
 };
 
-// ===== ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ =====
-let currentUser = DB.get('currentUser', null);
-let teams = DB.get('teams', []);
-let invites = DB.get('invites', []);
-
-// ===== ЯЗЫК =====
+// ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
+let currentUser = null;
 let currentLang = DB.get('lang', 'ru');
 
 // ===== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ =====
@@ -35,7 +33,6 @@ function go(page) {
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
 
-  // Обновление данных при переходе
   if (page === 'home' || page === 'teams') renderTeams();
   if (page === 'invites') renderInvites();
   if (page === 'profile') renderProfile();
@@ -43,10 +40,11 @@ function go(page) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ===== ТОСТ (уведомление) =====
+// ===== ТОСТ =====
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById('toast');
+  if (!el) return;
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
@@ -62,102 +60,65 @@ function closeModal() {
   document.getElementById('modal-bg').classList.remove('show');
 }
 
+// ===== ЭКРАНИРОВАНИЕ HTML =====
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ===== ПЕРЕВОДЫ =====
 const I18N = {
   ru: {
-    nav_teams: 'Команды',
-    nav_invites: 'Приглашения',
-    nav_profile: 'Профиль',
-    nav_login: 'Войти',
-    nav_logout: 'Выйти',
+    nav_teams: 'Команды', nav_invites: 'Приглашения', nav_profile: 'Профиль',
+    nav_login: 'Войти', nav_logout: 'Выйти',
     hero_title: 'Найди свою команду в CS2',
     hero_sub: 'Платформа для поиска тиммейтов. Создавай команду, отправляй приглашения, играй вместе.',
-    hero_create: 'Создать команду',
-    hero_browse: 'Смотреть команды',
-    home_recent: 'Недавние команды',
-    home_all: 'Все команды →',
-    teams_title: 'Команды',
-    filter_all_roles: 'Все роли',
-    filter_any_elo: 'Любое ЭЛО',
-    create_title: 'Создать команду',
-    create_sub: 'Заполни информацию о команде. Макс. ЭЛО — 5000.',
-    f_name: 'Название команды',
-    f_desc: 'Описание',
-    f_elo: 'Максимальное ЭЛО',
-    f_elo_hint: 'От 0 до 5000',
-    f_req: 'Требования к игрокам',
-    f_req_hint: 'Не более 250 символов',
-    f_roles: 'Нужные роли',
-    f_password: 'Пароль',
-    f_nick: 'Никнейм',
+    hero_create: 'Создать команду', hero_browse: 'Смотреть команды',
+    home_recent: 'Недавние команды', home_all: 'Все команды →',
+    teams_title: 'Команды', filter_all_roles: 'Все роли', filter_any_elo: 'Любое ЭЛО',
+    create_title: 'Создать команду', create_sub: 'Заполни информацию о команде. Макс. ЭЛО — 5000.',
+    f_name: 'Название команды', f_desc: 'Описание', f_elo: 'Максимальное ЭЛО',
+    f_elo_hint: 'От 0 до 5000', f_req: 'Требования к игрокам',
+    f_req_hint: 'Не более 250 символов', f_roles: 'Нужные роли',
+    f_password: 'Пароль', f_nick: 'Никнейм', f_role: 'Роль',
     create_btn: 'Создать команду',
-    auth_login: 'Вход',
-    auth_register: 'Регистрация',
-    login_title: 'С возвращением',
-    login_sub: 'Войди, чтобы продолжить поиск команды.',
-    login_btn: 'Войти',
-    reg_title: 'Создать аккаунт',
-    reg_sub: 'Подтверждение придёт на Gmail.',
-    reg_btn: 'Зарегистрироваться',
-    discord_login: 'Войти через Discord',
-    or: 'или',
-    invites_title: 'Приглашения',
-    invites_in: 'Входящие',
-    invites_out: 'Исходящие',
-    pf_elo: 'ЭЛО',
-    pf_role: 'Роль',
-    pf_team: 'Команда',
-    pf_status: 'Статус',
-    pf_my_teams: 'Мои команды',
-    pf_new_team: '+ Создать команду',
+    auth_login: 'Вход', auth_register: 'Регистрация',
+    login_title: 'С возвращением', login_sub: 'Войди, чтобы продолжить поиск команды.',
+    login_btn: 'Войти', reg_title: 'Создать аккаунт',
+    reg_sub: 'Подтверждение придёт на Gmail.', reg_btn: 'Зарегистрироваться',
+    discord_login: 'Войти через Discord', or: 'или',
+    invites_title: 'Приглашения', invites_in: 'Входящие', invites_out: 'Исходящие',
+    pf_elo: 'ЭЛО', pf_role: 'Роль', pf_team: 'Команда', pf_status: 'Статус',
+    pf_my_teams: 'Мои команды', pf_new_team: '+ Создать команду',
     footer_text: 'Найди свою команду'
   },
   en: {
-    nav_teams: 'Teams',
-    nav_invites: 'Invites',
-    nav_profile: 'Profile',
-    nav_login: 'Login',
-    nav_logout: 'Logout',
+    nav_teams: 'Teams', nav_invites: 'Invites', nav_profile: 'Profile',
+    nav_login: 'Login', nav_logout: 'Logout',
     hero_title: 'Find your CS2 team',
     hero_sub: 'Platform for finding teammates. Create a team, send invites, play together.',
-    hero_create: 'Create team',
-    hero_browse: 'Browse teams',
-    home_recent: 'Recent teams',
-    home_all: 'All teams →',
-    teams_title: 'Teams',
-    filter_all_roles: 'All roles',
-    filter_any_elo: 'Any ELO',
-    create_title: 'Create team',
-    create_sub: 'Fill in team info. Max ELO — 5000.',
-    f_name: 'Team name',
-    f_desc: 'Description',
-    f_elo: 'Max ELO',
-    f_elo_hint: 'From 0 to 5000',
-    f_req: 'Player requirements',
-    f_req_hint: 'Max 250 characters',
-    f_roles: 'Needed roles',
-    f_password: 'Password',
-    f_nick: 'Nickname',
+    hero_create: 'Create team', hero_browse: 'Browse teams',
+    home_recent: 'Recent teams', home_all: 'All teams →',
+    teams_title: 'Teams', filter_all_roles: 'All roles', filter_any_elo: 'Any ELO',
+    create_title: 'Create team', create_sub: 'Fill in team info. Max ELO — 5000.',
+    f_name: 'Team name', f_desc: 'Description', f_elo: 'Max ELO',
+    f_elo_hint: 'From 0 to 5000', f_req: 'Player requirements',
+    f_req_hint: 'Max 250 characters', f_roles: 'Needed roles',
+    f_password: 'Password', f_nick: 'Nickname', f_role: 'Role',
     create_btn: 'Create team',
-    auth_login: 'Login',
-    auth_register: 'Register',
-    login_title: 'Welcome back',
-    login_sub: 'Log in to continue finding a team.',
-    login_btn: 'Log in',
-    reg_title: 'Create account',
-    reg_sub: 'Confirmation will be sent to Gmail.',
-    reg_btn: 'Register',
-    discord_login: 'Login with Discord',
-    or: 'or',
-    invites_title: 'Invites',
-    invites_in: 'Incoming',
-    invites_out: 'Outgoing',
-    pf_elo: 'ELO',
-    pf_role: 'Role',
-    pf_team: 'Team',
-    pf_status: 'Status',
-    pf_my_teams: 'My teams',
-    pf_new_team: '+ Create team',
+    auth_login: 'Login', auth_register: 'Register',
+    login_title: 'Welcome back', login_sub: 'Log in to continue finding a team.',
+    login_btn: 'Log in', reg_title: 'Create account',
+    reg_sub: 'Confirmation will be sent to Gmail.', reg_btn: 'Register',
+    discord_login: 'Login with Discord', or: 'or',
+    invites_title: 'Invites', invites_in: 'Incoming', invites_out: 'Outgoing',
+    pf_elo: 'ELO', pf_role: 'Role', pf_team: 'Team', pf_status: 'Status',
+    pf_my_teams: 'My teams', pf_new_team: '+ Create team',
     footer_text: 'Find your team'
   }
 };
@@ -171,27 +132,19 @@ function setLang(lang) {
     if (I18N[lang][key]) el.textContent = I18N[lang][key];
   });
 
-  // Обновляем кнопку входа/выхода
   const authBtn = document.getElementById('nav-auth-btn');
   if (authBtn) {
-    authBtn.textContent = currentUser
-      ? I18N[lang].nav_logout
-      : I18N[lang].nav_login;
+    authBtn.textContent = currentUser ? I18N[lang].nav_logout : I18N[lang].nav_login;
   }
 
-  // Активная вкладка языка
   document.getElementById('lang-ru').classList.toggle('active', lang === 'ru');
   document.getElementById('lang-en').classList.toggle('active', lang === 'en');
 
-  // Перерисовка динамики
   renderTeams();
   renderInvites();
   renderProfile();
-}/* =========================================================
-   ЧАСТЬ 2: команды, приглашения, рендер
-   ========================================================= */
-
-// ===== ОТРИСОВКА КОМАНД (Supabase) =====
+}
+// ===== ОТРИСОВКА КОМАНД =====
 async function renderTeams() {
   const homeGrid = document.getElementById('home-grid');
   const teamsGrid = document.getElementById('teams-grid');
@@ -224,9 +177,7 @@ async function renderTeams() {
   });
 
   const nickById = {};
-  (profilesData || []).forEach(p => {
-    nickById[p.id] = p.nick;
-  });
+  (profilesData || []).forEach(p => { nickById[p.id] = p.nick; });
 
   const allTeams = (dbTeams || []).map(t => ({
     id: t.id,
@@ -262,6 +213,7 @@ async function renderTeams() {
     : '<div class="empty">Ничего не найдено</div>';
 }
 
+// ===== HTML КАРТОЧКИ КОМАНДЫ =====
 function teamCard(t) {
   const filled = t.members.length;
   const total = t.slots;
@@ -281,15 +233,14 @@ function teamCard(t) {
       <div class="roles">${rolesHtml || '<span class="role-tag">—</span>'}</div>
       <div class="card-foot">
         <div class="slots">${dots}<span style="margin-left:6px;">${filled}/${total}</span></div>
-        <div>${t.ownerName}</div>
+        <div>${escapeHtml(t.ownerName)}</div>
       </div>
     </div>
   `;
 }
 
-// ===== ПОКАЗ ДЕТАЛЕЙ КОМАНДЫ (Supabase) =====
+// ===== ПОКАЗ ДЕТАЛЕЙ КОМАНДЫ =====
 async function showTeam(id) {
-  // Загружаем команду
   const { data: t, error } = await supabaseClient
     .from('teams')
     .select('*')
@@ -301,7 +252,6 @@ async function showTeam(id) {
     return;
   }
 
-  // Загружаем участников
   const { data: membersData } = await supabaseClient
     .from('team_members')
     .select('user_id')
@@ -309,7 +259,6 @@ async function showTeam(id) {
 
   const memberIds = (membersData || []).map(m => m.user_id);
 
-  // Загружаем ники участников и владельца
   const allIds = [...new Set([...memberIds, t.owner_id])];
   const { data: profilesData } = await supabaseClient
     .from('profiles')
@@ -322,7 +271,6 @@ async function showTeam(id) {
   const memberNames = memberIds.map(uid => nickById[uid] || 'Unknown');
   const ownerName = nickById[t.owner_id] || 'Unknown';
 
-  // Проверяем статус текущего пользователя
   const isOwner = currentUser && t.owner_id === currentUser.id;
   const isMember = currentUser && memberIds.includes(currentUser.id);
 
@@ -345,7 +293,21 @@ async function showTeam(id) {
   if (!currentUser) {
     actionBtn = `<button class="btn btn-primary btn-block" onclick="closeModal(); go('auth')">Войти, чтобы подать заявку</button>`;
   } else if (isOwner) {
-    actionBtn = `<button class="btn btn-block" disabled style="opacity:0.5;cursor:default;">Это ваша команда</button>`;
+    const { data: activeDiss } = await supabaseClient
+      .from('team_dissolutions')
+      .select('id')
+      .eq('team_id', t.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (activeDiss) {
+      actionBtn = `<button class="btn btn-block" disabled style="opacity:0.5;cursor:default;">Голосование идёт</button>`;
+    } else {
+      actionBtn = `
+        <button class="btn btn-block" disabled style="opacity:0.5;cursor:default;margin-bottom:8px;">Это ваша команда</button>
+        <button class="btn btn-block" style="border-color:#553333;color:#ff6666;" onclick="startDissolution('${t.id}')">Распустить команду</button>
+      `;
+    }
   } else if (isMember) {
     actionBtn = `<button class="btn btn-block" disabled style="opacity:0.5;cursor:default;">Вы уже в команде</button>`;
   } else if (alreadyInvited) {
@@ -356,10 +318,14 @@ async function showTeam(id) {
     actionBtn = `<button class="btn btn-primary btn-block" onclick="sendInvite('${t.id}')">Подать заявку</button>`;
   }
 
+  const dissolutionHtml = await getDissolutionBlock(t.id, memberIds);
+
   openModal(`
     <h3>${escapeHtml(t.name)}</h3>
     <p class="sub">Владелец: ${escapeHtml(ownerName)} • Макс. ЭЛО: ${t.max_elo}</p>
     <p style="color:var(--text-dim);font-size:14px;margin-bottom:16px;">${escapeHtml(t.description || 'Без описания')}</p>
+
+    ${dissolutionHtml}
 
     <div style="margin-bottom:16px;">
       <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Нужные роли</div>
@@ -375,29 +341,13 @@ async function showTeam(id) {
       <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Состав (${memberIds.length}/${t.slots})</div>
       <div style="font-size:14px;">${memberNames.map(n => '• ' + escapeHtml(n)).join('<br>') || 'Пока никого'}</div>
     </div>
-} else if (isOwner) {
-  const { data: activeDiss } = await supabaseClient
-    .from('team_dissolutions')
-    .select('id')
-    .eq('team_id', t.id)
-    .eq('status', 'active')
-    .maybeSingle();
 
-  if (activeDiss) {
-    actionBtn = `<button class="btn btn-block" disabled style="opacity:0.5;cursor:default;">Голосование идёт</button>`;
-  } else {
-    actionBtn = `
-      <button class="btn btn-block" disabled style="opacity:0.5;cursor:default;margin-bottom:8px;">Это ваша команда</button>
-      <button class="btn btn-block" style="border-color:#553333;color:#ff6666;" onclick="startDissolution('${t.id}')">Распустить команду</button>
-    `;
-  }
-}
     ${actionBtn}
     <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Закрыть</button>
   `);
 }
 
-// ===== СОЗДАНИЕ КОМАНДЫ (Supabase) =====
+// ===== СОЗДАНИЕ КОМАНДЫ =====
 async function createTeam() {
   if (!currentUser) {
     toast('Сначала войди в аккаунт');
@@ -411,7 +361,6 @@ async function createTeam() {
   const req = document.getElementById('t-req').value.trim();
   const roles = Array.from(document.querySelectorAll('.role-check input:checked')).map(c => c.value);
 
-  // Валидация
   if (!name) { toast('Введи название команды'); return; }
   if (name.length < 3) { toast('Название минимум 3 символа'); return; }
   if (!maxElo || maxElo < 0 || maxElo > 5000) { toast('ЭЛО от 0 до 5000'); return; }
@@ -420,7 +369,6 @@ async function createTeam() {
 
   toast('Создаём команду...');
 
-  // 1) Создаём команду
   const { data: newTeam, error: teamError } = await supabaseClient
     .from('teams')
     .insert({
@@ -441,7 +389,6 @@ async function createTeam() {
     return;
   }
 
-  // 2) Добавляем себя в участники
   const { error: memberError } = await supabaseClient
     .from('team_members')
     .insert({
@@ -456,7 +403,6 @@ async function createTeam() {
     toast('Команда создана!');
   }
 
-  // Очистить форму
   document.getElementById('t-name').value = '';
   document.getElementById('t-desc').value = '';
   document.getElementById('t-elo').value = 2500;
@@ -467,12 +413,10 @@ async function createTeam() {
 
   go('teams');
 }
-
-// ===== ОТПРАВКА ЗАЯВКИ (Supabase) =====
+// ===== ОТПРАВКА ЗАЯВКИ =====
 async function sendInvite(teamId) {
   if (!currentUser) { go('auth'); return; }
 
-  // Загружаем команду, чтобы узнать владельца
   const { data: team, error: teamError } = await supabaseClient
     .from('teams')
     .select('id, owner_id, slots')
@@ -489,7 +433,6 @@ async function sendInvite(teamId) {
     return;
   }
 
-  // Проверяем, не в команде ли уже
   const { data: alreadyMember } = await supabaseClient
     .from('team_members')
     .select('id')
@@ -502,7 +445,6 @@ async function sendInvite(teamId) {
     return;
   }
 
-  // Проверяем, нет ли уже активной заявки
   const { data: existingInvite } = await supabaseClient
     .from('invites')
     .select('id')
@@ -516,7 +458,6 @@ async function sendInvite(teamId) {
     return;
   }
 
-  // Отправляем заявку
   const { error: insertError } = await supabaseClient
     .from('invites')
     .insert({
@@ -538,7 +479,7 @@ async function sendInvite(teamId) {
   renderInvites();
 }
 
-// ===== ОТРИСОВКА ПРИГЛАШЕНИЙ (Supabase) =====
+// ===== ОТРИСОВКА ПРИГЛАШЕНИЙ =====
 async function renderInvites() {
   const inBox = document.getElementById('invites-in');
   const outBox = document.getElementById('invites-out');
@@ -550,21 +491,18 @@ async function renderInvites() {
     return;
   }
 
-  // 1) Загружаем входящие заявки
   const { data: incoming } = await supabaseClient
     .from('invites')
     .select('*')
     .eq('to_user_id', currentUser.id)
     .order('created_at', { ascending: false });
 
-  // 2) Загружаем исходящие заявки
   const { data: outgoing } = await supabaseClient
     .from('invites')
     .select('*')
     .eq('from_user_id', currentUser.id)
     .order('created_at', { ascending: false });
 
-  // 3) Собираем ID, по которым нужны ники и названия команд
   const allInvites = [...(incoming || []), ...(outgoing || [])];
   const teamIds = [...new Set(allInvites.map(i => i.team_id))];
   const userIds = [...new Set([
@@ -572,12 +510,10 @@ async function renderInvites() {
     ...allInvites.map(i => i.to_user_id)
   ])];
 
-  // 4) Загружаем команды
   const { data: teamsData } = teamIds.length
     ? await supabaseClient.from('teams').select('id, name').in('id', teamIds)
     : { data: [] };
 
-  // 5) Загружаем профили
   const { data: profilesData } = userIds.length
     ? await supabaseClient.from('profiles').select('id, nick').in('id', userIds)
     : { data: [] };
@@ -588,12 +524,10 @@ async function renderInvites() {
   const nickById = {};
   (profilesData || []).forEach(p => { nickById[p.id] = p.nick; });
 
-  // 6) Рендерим входящие
   inBox.innerHTML = (incoming && incoming.length)
     ? incoming.map(i => inviteRowIn(i, teamNameById, nickById)).join('')
     : '<div class="empty">Входящих приглашений нет</div>';
 
-  // 7) Рендерим исходящие
   outBox.innerHTML = (outgoing && outgoing.length)
     ? outgoing.map(i => inviteRowOut(i, teamNameById, nickById)).join('')
     : '<div class="empty">Исходящих заявок нет</div>';
@@ -649,54 +583,24 @@ function inviteRowOut(i, teamNameById, nickById) {
   `;
 }
 
-function inviteRowOut(i) {
-  const statusText = {
-    pending: '⏳ Ожидает',
-    accepted: '✓ Принято',
-    declined: '✕ Отклонено'
-  }[i.status] || '';
-
-  return `
-    <div class="invite-row">
-      <div class="invite-info">
-        <div class="name">${escapeHtml(i.teamName)}</div>
-        <div class="meta">Владелец: ${escapeHtml(i.toUserName)}</div>
-      </div>
-      <div class="invite-actions">
-        <span style="color:var(--text-dim);font-size:13px;">${statusText}</span>
-      </div>
-    </div>
-  `;
-}
-
-// ===== ПРИНЯТЬ / ОТКЛОНИТЬ (Supabase) =====
-
+// ===== ПРИНЯТЬ / ОТКЛОНИТЬ =====
 async function acceptInvite(inviteId) {
-  // 1) Загружаем заявку
   const { data: invite, error: invErr } = await supabaseClient
     .from('invites')
     .select('*')
     .eq('id', inviteId)
     .single();
 
-  if (invErr || !invite) {
-    toast('Заявка не найдена');
-    return;
-  }
+  if (invErr || !invite) { toast('Заявка не найдена'); return; }
 
-  // 2) Загружаем команду — проверить свободные места
   const { data: team, error: teamErr } = await supabaseClient
     .from('teams')
     .select('id, slots')
     .eq('id', invite.team_id)
     .single();
 
-  if (teamErr || !team) {
-    toast('Команда не найдена');
-    return;
-  }
+  if (teamErr || !team) { toast('Команда не найдена'); return; }
 
-  // 3) Считаем текущих участников
   const { count: membersCount } = await supabaseClient
     .from('team_members')
     .select('*', { count: 'exact', head: true })
@@ -707,13 +611,9 @@ async function acceptInvite(inviteId) {
     return;
   }
 
-  // 4) Добавляем игрока в команду
   const { error: addErr } = await supabaseClient
     .from('team_members')
-    .insert({
-      team_id: invite.team_id,
-      user_id: invite.from_user_id
-    });
+    .insert({ team_id: invite.team_id, user_id: invite.from_user_id });
 
   if (addErr) {
     toast('Ошибка: ' + addErr.message);
@@ -721,19 +621,12 @@ async function acceptInvite(inviteId) {
     return;
   }
 
-  // 5) Обновляем статус заявки
-  const { error: updErr } = await supabaseClient
+  await supabaseClient
     .from('invites')
     .update({ status: 'accepted' })
     .eq('id', inviteId);
 
-  if (updErr) {
-    toast('Игрок добавлен, но статус не обновился');
-    console.error(updErr);
-  } else {
-    toast('Игрок принят в команду!');
-  }
-
+  toast('Игрок принят в команду!');
   renderInvites();
   renderTeams();
 }
@@ -754,20 +647,112 @@ async function declineInvite(inviteId) {
   renderInvites();
 }
 
-// ===== БЕЗОПАСНОСТЬ HTML =====
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}/* =========================================================
-   ЧАСТЬ 3: авторизация, профиль, обработчики, запуск
-   ========================================================= */
+// ===== РОСПУСК КОМАНДЫ (голосование) =====
+async function startDissolution(teamId) {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
 
-// ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ВХОД/РЕГИСТРАЦИЯ =====
+  if (!confirm('Запустить голосование за роспуск команды? Нужно большинство голосов "За".')) {
+    return;
+  }
+
+  toast('Запускаем голосование...');
+
+  const { data, error } = await supabaseClient.rpc('start_dissolution', {
+    p_team_id: teamId
+  });
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  toast('Голосование запущено!');
+  closeModal();
+  renderTeams();
+  renderInvites();
+  setTimeout(() => showTeam(teamId), 300);
+}
+
+async function voteDissolution(dissolutionId, vote) {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+
+  toast('Голосуем...');
+
+  const { error } = await supabaseClient
+    .from('dissolution_votes')
+    .insert({
+      dissolution_id: dissolutionId,
+      user_id: currentUser.id,
+      vote: vote
+    });
+
+  if (error) {
+    if (error.message.includes('duplicate')) {
+      toast('Ты уже голосовал');
+    } else {
+      toast('Ошибка: ' + error.message);
+    }
+    console.error(error);
+    return;
+  }
+
+  toast(vote === 'yes' ? 'Голос "За" принят' : 'Голос "Против" принят');
+  renderTeams();
+  renderInvites();
+  closeModal();
+}
+
+async function getDissolutionBlock(teamId, memberIds) {
+  if (!currentUser) return '';
+
+  const { data: dissolution } = await supabaseClient
+    .from('team_dissolutions')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!dissolution) return '';
+
+  const { data: votes } = await supabaseClient
+    .from('dissolution_votes')
+    .select('*')
+    .eq('dissolution_id', dissolution.id);
+
+  const yesVotes = (votes || []).filter(v => v.vote === 'yes').length;
+  const noVotes = (votes || []).filter(v => v.vote === 'no').length;
+  const totalMembers = memberIds.length;
+  const needed = Math.floor(totalMembers / 2) + 1;
+
+  const myVote = (votes || []).find(v => v.user_id === currentUser.id);
+  const isMember = memberIds.includes(currentUser.id);
+
+  let voteButtons = '';
+  if (isMember && !myVote) {
+    voteButtons = `
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="voteDissolution('${dissolution.id}', 'yes')">За</button>
+        <button class="btn" style="flex:1;" onclick="voteDissolution('${dissolution.id}', 'no')">Против</button>
+      </div>
+    `;
+  } else if (myVote) {
+    voteButtons = `<div style="color:var(--text-dim);font-size:13px;margin-top:10px;">Ты проголосовал: <b>${myVote.vote === 'yes' ? 'За' : 'Против'}</b></div>`;
+  } else {
+    voteButtons = `<div style="color:var(--text-dim);font-size:13px;margin-top:10px;">Только участники могут голосовать</div>`;
+  }
+
+  return `
+    <div style="background:#1a0f0f;border:1px solid #553333;border-radius:10px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;color:#ff9999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;font-weight:700;">🗳 Голосование за роспуск</div>
+      <div style="font-size:14px;margin-bottom:4px;">За: <b>${yesVotes}</b> из <b>${needed}</b> нужно</div>
+      <div style="font-size:13px;color:var(--text-dim);">Против: ${noVotes} • Всего участников: ${totalMembers}</div>
+      ${voteButtons}
+    </div>
+  `;
+}
+
+// ===== АВТОРИЗАЦИЯ =====
 function switchAuth(mode) {
   const loginTab = document.getElementById('tab-login');
   const regTab = document.getElementById('tab-register');
@@ -787,13 +772,13 @@ function switchAuth(mode) {
   }
 }
 
-// ===== РЕГИСТРАЦИЯ (Supabase) =====
 async function doRegister() {
   const nick = document.getElementById('reg-nick').value.trim();
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-pass').value;
   const elo = parseInt(document.getElementById('reg-elo').value, 10) || 0;
   const role = document.getElementById('reg-role').value;
+
   if (!nick || nick.length < 3) { toast('Никнейм минимум 3 символа'); return; }
   if (!email || !email.includes('@')) { toast('Введи корректный Email'); return; }
   if (!pass || pass.length < 6) { toast('Пароль минимум 6 символов'); return; }
@@ -805,11 +790,7 @@ async function doRegister() {
     email: email,
     password: pass,
     options: {
-      data: {
-        nick: nick,
-        elo: elo,
-        role: role
-      },
+      data: { nick: nick, elo: elo, role: role },
       emailRedirectTo: window.location.origin
     }
   });
@@ -820,15 +801,10 @@ async function doRegister() {
     return;
   }
 
-  // Проверяем — сразу ли пользователь залогинен (если Confirm email выключен)
   if (data.session) {
     toast('Добро пожаловать, ' + nick + '!');
-    setTimeout(() => {
-      updateAuthUI();
-      go('profile');
-    }, 800);
+    setTimeout(() => { updateAuthUI(); go('profile'); }, 800);
   } else {
-    // Confirm email включён — надо подтвердить почту
     toast('Проверь почту ' + email + ' — там письмо для подтверждения');
     document.getElementById('reg-nick').value = '';
     document.getElementById('reg-email').value = '';
@@ -836,14 +812,14 @@ async function doRegister() {
     setTimeout(() => switchAuth('login'), 2000);
   }
 }
-// ===== ВХОД (Supabase) =====
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
 
   if (!email || !pass) { toast('Заполни Email и пароль'); return; }
 
-  toast('Входим...');  
+  toast('Входим...');
 
   const { data, error } = await supabaseClient.auth.signInWithPassword({
     email: email,
@@ -856,7 +832,6 @@ async function doLogin() {
     return;
   }
 
-  // Загружаем профиль из БД
   const { data: profile, error: profileError } = await supabaseClient
     .from('profiles')
     .select('*')
@@ -869,7 +844,6 @@ async function doLogin() {
     return;
   }
 
-  // Сохраняем в глобальную переменную
   currentUser = {
     id: profile.id,
     nick: profile.nick,
@@ -883,7 +857,6 @@ async function doLogin() {
   go('profile');
 }
 
-// ===== ВЫХОД (Supabase) =====
 async function doLogout() {
   await supabaseClient.auth.signOut();
   currentUser = null;
@@ -892,7 +865,6 @@ async function doLogout() {
   go('home');
 }
 
-// ===== DISCORD (симуляция) =====
 function discordAuth() {
   toast('Discord OAuth появится на реальном сервере');
   setTimeout(() => {
@@ -900,11 +872,8 @@ function discordAuth() {
       id: 'u_discord_' + Date.now(),
       nick: 'DiscordUser',
       email: 'discord@demo.local',
-      pass: '',
       elo: 2500,
-      role: 'Rifler',
-      teamId: null,
-      createdAt: Date.now()
+      role: 'Rifler'
     };
     currentUser = demoUser;
     DB.set('currentUser', demoUser);
@@ -922,7 +891,6 @@ function updateAuthUI() {
     : (I18N[currentLang]?.nav_login || 'Войти');
 }
 
-// Проверка сессии Supabase при загрузке
 async function checkSession() {
   const { data } = await supabaseClient.auth.getSession();
   if (!data.session) {
@@ -930,7 +898,6 @@ async function checkSession() {
     return;
   }
 
-  // Загружаем профиль текущего юзера
   const { data: profile } = await supabaseClient
     .from('profiles')
     .select('*')
@@ -948,7 +915,7 @@ async function checkSession() {
   }
 }
 
-// ===== ПРОФИЛЬ (Supabase) =====
+// ===== ПРОФИЛЬ =====
 async function renderProfile() {
   const nickEl = document.getElementById('pf-nick');
   const emailEl = document.getElementById('pf-email');
@@ -961,7 +928,6 @@ async function renderProfile() {
 
   if (!nickEl) return;
 
-  // Если не залогинен
   if (!currentUser) {
     nickEl.textContent = 'Гость';
     emailEl.textContent = 'Войди в аккаунт';
@@ -974,22 +940,15 @@ async function renderProfile() {
     return;
   }
 
-  // Основные данные
   nickEl.textContent = currentUser.nick;
   emailEl.textContent = currentUser.email;
   avatarEl.textContent = currentUser.nick[0].toUpperCase();
   eloEl.textContent = currentUser.elo;
   roleEl.textContent = currentUser.role;
 
-  // Загружаем команды, где я — участник
   const { data: myTeams, error } = await supabaseClient
     .from('team_members')
-    .select(`
-      team_id,
-      teams (
-        id, name, description, max_elo, requirements, roles, slots, owner_id
-      )
-    `)
+    .select('team_id, teams (id, name, description, max_elo, requirements, roles, slots, owner_id)')
     .eq('user_id', currentUser.id);
 
   if (error) {
@@ -1008,7 +967,6 @@ async function renderProfile() {
   teamEl.textContent = myTeams[0].teams.name;
   statusEl.textContent = 'В команде';
 
-  // Собираем карточки (упрощённый формат — teamCard примем позже, когда переделаем)
   grid.innerHTML = myTeams.map(row => {
     const t = row.teams;
     return `
@@ -1019,17 +977,14 @@ async function renderProfile() {
         </div>
         <div class="card-desc">${escapeHtml(t.description || 'Без описания')}</div>
         <div class="roles">${(t.roles || []).map(r => `<span class="role-tag">${r}</span>`).join('')}</div>
-        <div class="card-foot">
-          <div>${t.slots} слотов</div>
-        </div>
+        <div class="card-foot"><div>${t.slots} слотов</div></div>
       </div>
     `;
   }).join('');
 }
 
-// ===== ОБРАБОТЧИКИ ФОРМ =====
+// ===== ОБРАБОТЧИКИ =====
 function initFormHandlers() {
-  // Счётчик символов в требованиях
   const reqArea = document.getElementById('t-req');
   const reqCounter = document.getElementById('req-counter');
   if (reqArea && reqCounter) {
@@ -1040,7 +995,6 @@ function initFormHandlers() {
     });
   }
 
-  // ЭЛО — живое значение
   const eloInput = document.getElementById('t-elo');
   const eloVal = document.getElementById('elo-val');
   if (eloInput && eloVal) {
@@ -1053,13 +1007,11 @@ function initFormHandlers() {
     });
   }
 
-  // Фильтры
   ['search', 'filter-role', 'filter-elo'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', renderTeams);
   });
 
-  // Клик по кнопке "Войти/Выйти" в шапке
   const authBtn = document.getElementById('nav-auth-btn');
   if (authBtn) {
     authBtn.onclick = () => {
@@ -1069,22 +1021,14 @@ function initFormHandlers() {
   }
 }
 
-
-      
-
 // ===== ЗАПУСК =====
 document.addEventListener('DOMContentLoaded', async () => {
   initFormHandlers();
   setLang(currentLang);
-
-  // Проверяем — есть ли активная сессия Supabase
   await checkSession();
   updateAuthUI();
-
-  // Загружаем данные
   await renderTeams();
   await renderInvites();
   await renderProfile();
-
   go('home');
 });
