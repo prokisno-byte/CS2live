@@ -1262,7 +1262,6 @@ function initFormHandlers() {
   const btn = document.getElementById('nav-auth-btn');
   if (btn) btn.onclick = () => { currentUser ? doLogout() : go('auth'); };
 }
-
 // ===== ЗАПУСК =====
 // ===== РЕДАКТИРОВАНИЕ ПРОФИЛЯ =====
 async function editProfile() {
@@ -1592,3 +1591,57 @@ document.addEventListener('click', (e) => {
     });
   }, { passive: true });
 })();
+
+
+
+// ===== СЧЁТЧИК ИГРОКОВ =====
+async function updatePlayersCounter() {
+  try {
+    // 1. Текущий онлайн — статус "online" и last_seen < 5 минут
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { count: onlineCount } = await supabaseClient
+      .from('user_status')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'online')
+      .gte('last_seen', fiveMinAgo);
+
+    const currentOnline = onlineCount || 0;
+
+    // 2. Получаем рекорд
+    const { data: stats } = await supabaseClient
+      .from('site_stats')
+      .select('max_online')
+      .eq('id', 1)
+      .single();
+
+    let maxOnline = stats?.max_online || 0;
+
+    // 3. Если текущий онлайн больше рекорда — обновляем
+    if (currentOnline > maxOnline) {
+      const { error: updateErr } = await supabaseClient
+        .from('site_stats')
+        .update({
+          max_online: currentOnline,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1);
+
+      if (!updateErr) maxOnline = currentOnline;
+    }
+
+    // 4. Обновляем HTML
+    const totalEl = document.getElementById('total-players');
+    const onlineEl = document.getElementById('online-players');
+
+    if (totalEl) totalEl.textContent = maxOnline;
+    if (onlineEl) onlineEl.textContent = currentOnline;
+  } catch (err) {
+    console.error('Ошибка счётчика:', err);
+  }
+}
+
+// Запускаем каждые 30 секунд + при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(updatePlayersCounter, 500);
+  setInterval(updatePlayersCounter, 30000);
+});
