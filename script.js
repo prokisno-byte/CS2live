@@ -1148,6 +1148,10 @@ async function discordAuth() {
   if (error) toast('Ошибка: ' + error.message);
 }
 
+function steamAuth() {
+  window.location.href = 'https://tuhvornfjgbhdygbpoou.supabase.co/functions/v1/steam-auth?action=login';
+}
+
 function updateAuthUI() {
   const btn = document.getElementById('nav-auth-btn');
   if (btn) btn.textContent = currentUser ? 'Выйти' : 'Войти';
