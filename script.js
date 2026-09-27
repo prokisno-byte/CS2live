@@ -941,6 +941,8 @@ async function renderProfile() {
   }
 
   nickEl.textContent = currentUser.nick;
+   // Загружаем и показываем статус
+loadAndShowStatus();
   emailEl.textContent = currentUser.email;
   avatarEl.textContent = currentUser.nick[0].toUpperCase();
   eloEl.textContent = currentUser.elo;
