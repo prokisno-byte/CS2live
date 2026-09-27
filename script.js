@@ -35,6 +35,7 @@ function go(page) {
 
   if (page === 'home' || page === 'teams') renderTeams();
   if (page === 'invites') renderInvites();
+  if (page === 'friends') renderFriends();
   if (page === 'profile') renderProfile();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -922,6 +923,7 @@ async function checkSession() {
 
   if (currentUser) {
     setTimeout(startHeartbeat, 1000);
+    setTimeout(updateFriendsBadge, 1500);
   }
 }
 // ===== ПРОФИЛЬ =====
@@ -1403,4 +1405,12 @@ async function openUserProfile(userId) {
     ${actionsHtml}
     <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Закрыть</button>
   `);
+}
+
+
+
+// ===== ЗАГЛУШКА ЧАТА (будет на Этапе 4) =====
+function openChat(userId) {
+  toast('Чат появится в следующем обновлении');
+  console.log('Открыть чат с:', userId);
 }
