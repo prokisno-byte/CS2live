@@ -708,3 +708,69 @@ footer {
 .status-select:focus {
   border-color: var(--white);
 }
+
+
+/* ===== ДРУЗЬЯ ===== */
+.member-link {
+  color: var(--text);
+  transition: all 0.15s;
+}
+
+.member-link:hover {
+  color: var(--white);
+  border-bottom-color: var(--white) !important;
+}
+
+.friend-row {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  transition: all 0.18s;
+  flex-wrap: wrap;
+}
+
+.friend-row:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-3);
+}
+
+.friend-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.friend-info .status-dot {
+  width: 10px;
+  height: 10px;
+  margin: 0;
+}
+
+.friend-info .name {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.friend-info .name:hover {
+  color: var(--white);
+  text-decoration: underline;
+}
+
+.friend-info .sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 8px;
+}
