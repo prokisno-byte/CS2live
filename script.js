@@ -339,7 +339,13 @@ async function showTeam(id) {
 
     <div style="margin-bottom:20px;">
       <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Состав (${memberIds.length}/${t.slots})</div>
-      <div style="font-size:14px;">${memberNames.map(n => '• ' + escapeHtml(n)).join('<br>') || 'Пока никого'}</div>
+     <div style="font-size:14px;">
+  ${memberIds.length
+    ? memberIds.map((uid, i) =>
+        `<div style="margin-bottom:6px;">• <span class="member-link" onclick="openUserProfile('${uid}')">${escapeHtml(memberNames[i])}</span></div>`
+      ).join('')
+    : 'Пока никого'}
+</div>
     </div>
 
     ${actionBtn}
@@ -1105,4 +1111,296 @@ function startHeartbeat() {
 
   beat();
   setInterval(beat, 60000);
+}
+
+
+
+// ===== ДРУЗЬЯ =====
+
+// Отправить запрос в друзья
+async function sendFriendRequest(friendId) {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+  if (friendId === currentUser.id) { toast('Это ты сам'); return; }
+
+  // Проверяем, нет ли уже запроса
+  const { data: existing } = await supabaseClient
+    .from('friendships')
+    .select('id, status')
+    .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${currentUser.id})`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === 'accepted') toast('Вы уже друзья');
+    else if (existing.status === 'pending') toast('Запрос уже отправлен');
+    else toast('Запрос уже есть');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('friendships')
+    .insert({
+      user_id: currentUser.id,
+      friend_id: friendId,
+      status: 'pending'
+    });
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  toast('Запрос в друзья отправлен!');
+  closeModal();
+  renderFriends();
+  updateFriendsBadge();
+}
+
+// Принять запрос
+async function acceptFriend(friendshipId) {
+  const { error } = await supabaseClient
+    .from('friendships')
+    .update({ status: 'accepted' })
+    .eq('id', friendshipId);
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  toast('Теперь вы друзья!');
+  renderFriends();
+  updateFriendsBadge();
+}
+
+// Отклонить запрос
+async function declineFriend(friendshipId) {
+  const { error } = await supabaseClient
+    .from('friendships')
+    .update({ status: 'declined' })
+    .eq('id', friendshipId);
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  toast('Запрос отклонён');
+  renderFriends();
+  updateFriendsBadge();
+}
+
+// Отменить свой запрос
+async function cancelFriendRequest(friendshipId) {
+  if (!confirm('Отменить запрос в друзья?')) return;
+
+  const { error } = await supabaseClient
+    .from('friendships')
+    .delete()
+    .eq('id', friendshipId);
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  toast('Запрос отменён');
+  renderFriends();
+  updateFriendsBadge();
+}
+
+// Обновить бейдж с количеством входящих
+async function updateFriendsBadge() {
+  const badge = document.getElementById('friends-badge');
+  if (!badge) return;
+
+  if (!currentUser) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  const { count } = await supabaseClient
+    .from('friendships')
+    .select('*', { count: 'exact', head: true })
+    .eq('friend_id', currentUser.id)
+    .eq('status', 'pending');
+
+  if ((count || 0) > 0) {
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Отрисовка страницы "Друзья"
+async function renderFriends() {
+  const inBox = document.getElementById('friends-incoming');
+  const outBox = document.getElementById('friends-outgoing');
+  const listBox = document.getElementById('friends-list');
+
+  if (!inBox || !outBox || !listBox) return;
+
+  if (!currentUser) {
+    inBox.innerHTML = '<div class="empty">Войди, чтобы видеть друзей</div>';
+    outBox.innerHTML = '';
+    listBox.innerHTML = '';
+    return;
+  }
+
+  // Загружаем все связи пользователя
+  const { data: friendships } = await supabaseClient
+    .from('friendships')
+    .select('*')
+    .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`);
+
+  if (!friendships || friendships.length === 0) {
+    inBox.innerHTML = '<div class="empty">Входящих запросов нет</div>';
+    outBox.innerHTML = '<div class="empty">Исходящих запросов нет</div>';
+    listBox.innerHTML = '<div class="empty">У тебя пока нет друзей</div>';
+    return;
+  }
+
+  // Разделяем
+  const incoming = friendships.filter(f => f.friend_id === currentUser.id && f.status === 'pending');
+  const outgoing = friendships.filter(f => f.user_id === currentUser.id && f.status === 'pending');
+  const friends = friendships.filter(f => f.status === 'accepted');
+
+  // Собираем ID всех юзеров
+  const userIds = [...new Set([
+    ...incoming.map(f => f.user_id),
+    ...outgoing.map(f => f.friend_id),
+    ...friends.map(f => f.user_id === currentUser.id ? f.friend_id : f.user_id)
+  ])];
+
+  // Загружаем профили + статусы
+  const { data: profiles } = userIds.length
+    ? await supabaseClient.from('profiles').select('id, nick, elo, role').in('id', userIds)
+    : { data: [] };
+
+  const { data: statuses } = userIds.length
+    ? await supabaseClient.from('user_status').select('user_id, status').in('user_id', userIds)
+    : { data: [] };
+
+  const profileById = {};
+  (profiles || []).forEach(p => { profileById[p.id] = p; });
+
+  const statusById = {};
+  (statuses || []).forEach(s => { statusById[s.user_id] = s.status; });
+
+  // Отрисовка
+  inBox.innerHTML = incoming.length
+    ? incoming.map(f => friendRow(f.user_id, f.id, 'incoming', profileById, statusById)).join('')
+    : '<div class="empty">Входящих запросов нет</div>';
+
+  outBox.innerHTML = outgoing.length
+    ? outgoing.map(f => friendRow(f.friend_id, f.id, 'outgoing', profileById, statusById)).join('')
+    : '<div class="empty">Исходящих запросов нет</div>';
+
+  listBox.innerHTML = friends.length
+    ? friends.map(f => {
+        const friendId = f.user_id === currentUser.id ? f.friend_id : f.user_id;
+        return friendRow(friendId, f.id, 'friend', profileById, statusById);
+      }).join('')
+    : '<div class="empty">У тебя пока нет друзей</div>';
+}
+
+// HTML строки друга
+function friendRow(userId, friendshipId, type, profileById, statusById) {
+  const p = profileById[userId] || { nick: 'Unknown', elo: 0, role: '—' };
+  const status = statusById[userId] || 'offline';
+
+  let actions = '';
+  if (type === 'incoming') {
+    actions = `
+      <button class="btn btn-primary btn-sm" onclick="acceptFriend('${friendshipId}')">Принять</button>
+      <button class="btn btn-sm" onclick="declineFriend('${friendshipId}')">Отклонить</button>
+    `;
+  } else if (type === 'outgoing') {
+    actions = `<button class="btn btn-sm" onclick="cancelFriendRequest('${friendshipId}')">Отменить</button>`;
+  } else {
+    actions = `<button class="btn btn-primary btn-sm" onclick="openChat('${userId}')">Написать</button>`;
+  }
+
+  return `
+    <div class="friend-row">
+      <div class="friend-info">
+        <span class="status-dot status-${status}"></span>
+        <div>
+          <div class="name" onclick="openUserProfile('${userId}')">${escapeHtml(p.nick)}</div>
+          <div class="sub">${p.elo} ELO • ${p.role}</div>
+        </div>
+      </div>
+      <div class="friend-actions">${actions}</div>
+    </div>
+  `;
+}
+
+// Мини-профиль игрока (модалка)
+async function openUserProfile(userId) {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+
+  // Загружаем профиль
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (!profile) { toast('Игрок не найден'); return; }
+
+  // Статус
+  const { data: statusData } = await supabaseClient
+    .from('user_status')
+    .select('status')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const status = statusData?.status || 'offline';
+
+  // Проверяем дружбу
+  const { data: friendship } = await supabaseClient
+    .from('friendships')
+    .select('*')
+    .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUser.id})`)
+    .maybeSingle();
+
+  // Формируем кнопки
+  let actionsHtml = '';
+  if (userId === currentUser.id) {
+    actionsHtml = `<button class="btn btn-block" disabled style="opacity:0.5;">Это твой профиль</button>`;
+  } else if (!friendship) {
+    actionsHtml = `<button class="btn btn-primary btn-block" onclick="sendFriendRequest('${userId}')">Добавить в друзья</button>`;
+  } else if (friendship.status === 'pending') {
+    if (friendship.user_id === currentUser.id) {
+      actionsHtml = `<button class="btn btn-block" onclick="cancelFriendRequest('${friendship.id}')">Отменить запрос</button>`;
+    } else {
+      actionsHtml = `
+        <button class="btn btn-primary btn-block" style="margin-bottom:8px;" onclick="acceptFriend('${friendship.id}')">Принять запрос</button>
+        <button class="btn btn-block" onclick="declineFriend('${friendship.id}')">Отклонить</button>
+      `;
+    }
+  } else if (friendship.status === 'accepted') {
+    actionsHtml = `<button class="btn btn-primary btn-block" onclick="openChat('${userId}')">Написать сообщение</button>`;
+  } else {
+    actionsHtml = `<button class="btn btn-primary btn-block" onclick="sendFriendRequest('${userId}')">Добавить в друзья</button>`;
+  }
+
+  openModal(`
+    <h3>${escapeHtml(profile.nick)}</h3>
+    <p class="sub">
+      <span class="status-dot status-${status}"></span>
+      ${profile.elo} ELO • ${profile.role}
+    </p>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">ЭЛО</div>
+      <div style="font-size:22px;font-weight:800;">${profile.elo}</div>
+    </div>
+
+    ${actionsHtml}
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Закрыть</button>
+  `);
 }
