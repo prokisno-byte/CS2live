@@ -2099,30 +2099,87 @@ function toggleSound() {
   toast(soundEnabled ? 'Звук включён' : 'Звук выключен');
 }
 
+// ===== ЗВУКИ =====
+let soundEnabled = localStorage.getItem('sound') !== 'off';
+let audioCtx = null;
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('sound', soundEnabled ? 'on' : 'off');
+  
+  const btn = document.getElementById('sound-toggle');
+  if (btn) {
+    btn.textContent = soundEnabled ? '🔊' : '🔇';
+    btn.classList.toggle('muted', !soundEnabled);
+  }
+  
+  if (soundEnabled) {
+    // Разблокируем аудио при включении
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    playSound('success');
+  }
+  
+  toast(soundEnabled ? 'Звук включён' : 'Звук выключен');
+}
+
 function playSound(type) {
   if (!soundEnabled) return;
   
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    // Создаём AudioContext один раз
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    // Если контекст на паузе — включаем
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
     
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(audioCtx.destination);
     
-    const freqs = { click: 800, success: 1200, error: 300, message: 600 };
+    const freqs = {
+      click: 800,
+      success: 1400,
+      error: 250,
+      message: 600,
+      notification: 1000
+    };
     const freq = freqs[type] || 600;
     
-    osc.frequency.value = freq;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.1);
     osc.type = 'sine';
     
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
     
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-  } catch (e) {}
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } catch (e) {
+    console.error('Ошибка звука:', e);
+  }
 }
+
+// Разблокировка звука при первом клике
+document.addEventListener('click', function unlockAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}, { once: true });}
 
 // ===== ОБНОВЛЕНИЕ DOMContentLoaded =====
 // Добавляем в существующий DOMContentLoaded (НЕ создаём новый)
