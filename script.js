@@ -1583,3 +1583,65 @@ header:hover {
   color: var(--black);
   transform: translateY(-1px);
 }
+
+
+
+// ===== РЕДАКТИРОВАНИЕ ПРОФИЛЯ =====
+async function editProfile() {
+  if (!currentUser) { toast('Войди в аккаунт'); return; }
+
+  openModal(`
+    <h3>Редактировать профиль</h3>
+    <p class="sub">Измени свой ник, ЭЛО или роль</p>
+
+    <div class="field">
+      <label>Никнейм</label>
+      <input type="text" id="edit-nick" value="${escapeHtml(currentUser.nick)}" maxlength="20">
+    </div>
+
+    <div class="field">
+      <label>ЭЛО</label>
+      <input type="number" id="edit-elo" min="0" max="5000" value="${currentUser.elo}">
+    </div>
+
+    <div class="field">
+      <label>Роль</label>
+      <select id="edit-role">
+        <option value="Rifler" ${currentUser.role === 'Rifler' ? 'selected' : ''}>Rifler</option>
+        <option value="IGL" ${currentUser.role === 'IGL' ? 'selected' : ''}>IGL</option>
+        <option value="AWPer" ${currentUser.role === 'AWPer' ? 'selected' : ''}>AWPer</option>
+        <option value="Entry" ${currentUser.role === 'Entry' ? 'selected' : ''}>Entry</option>
+        <option value="Support" ${currentUser.role === 'Support' ? 'selected' : ''}>Support</option>
+        <option value="Lurker" ${currentUser.role === 'Lurker' ? 'selected' : ''}>Lurker</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="saveProfile()">Сохранить</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Отмена</button>
+  `);
+}
+
+async function saveProfile() {
+  const nick = document.getElementById('edit-nick').value.trim();
+  const elo = parseInt(document.getElementById('edit-elo').value, 10) || 0;
+  const role = document.getElementById('edit-role').value;
+
+  if (!nick || nick.length < 3) { toast('Ник минимум 3 символа'); return; }
+  if (elo < 0 || elo > 5000) { toast('ЭЛО от 0 до 5000'); return; }
+
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ nick, elo, role })
+    .eq('id', currentUser.id);
+
+  if (error) { toast('Ошибка: ' + error.message); return; }
+
+  currentUser.nick = nick;
+  currentUser.elo = elo;
+  currentUser.role = role;
+  window._nickCache[currentUser.id] = nick;
+
+  toast('Профиль обновлён!');
+  closeModal();
+  renderProfile();
+}
