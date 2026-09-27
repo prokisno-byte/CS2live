@@ -275,6 +275,9 @@ async function showTeam(id) {
   const isOwner = currentUser && t.owner_id === currentUser.id;
   const isMember = currentUser && memberIds.includes(currentUser.id);
 
+  // Сохраняем ID текущей команды для чата
+  window._currentTeamId = t.id;
+
   let alreadyInvited = false;
   if (currentUser && !isOwner && !isMember) {
     const { data: existing } = await supabaseClient
@@ -324,34 +327,74 @@ async function showTeam(id) {
   openModal(`
     <h3>${escapeHtml(t.name)}</h3>
     <p class="sub">Владелец: ${escapeHtml(ownerName)} • Макс. ЭЛО: ${t.max_elo}</p>
-    <p style="color:var(--text-dim);font-size:14px;margin-bottom:16px;">${escapeHtml(t.description || 'Без описания')}</p>
 
-    ${dissolutionHtml}
+    ${isMember ? `
+      <div class="team-tabs">
+        <button class="team-tab active" onclick="switchTeamTab('info')">Инфо</button>
+        <button class="team-tab" onclick="switchTeamTab('chat')">Чат</button>
+      </div>
+    ` : ''}
 
-    <div style="margin-bottom:16px;">
-      <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Нужные роли</div>
-      <div class="roles">${rolesHtml || '<span class="role-tag">—</span>'}</div>
+    <div id="team-tab-info" class="team-tab-content active">
+      <p style="color:var(--text-dim);font-size:14px;margin-bottom:16px;">${escapeHtml(t.description || 'Без описания')}</p>
+
+      ${dissolutionHtml}
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Нужные роли</div>
+        <div class="roles">${rolesHtml || '<span class="role-tag">—</span>'}</div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Требования</div>
+        <div style="font-size:14px;color:var(--text);">${escapeHtml(t.requirements || 'Не указаны')}</div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Состав (${memberIds.length}/${t.slots})</div>
+        <div style="font-size:14px;">
+          ${memberIds.length
+            ? memberIds.map((uid, i) =>
+                `<div style="margin-bottom:6px;">• <span class="member-link" onclick="openUserProfile('${uid}')">${escapeHtml(memberNames[i])}</span></div>`
+              ).join('')
+            : 'Пока никого'}
+        </div>
+      </div>
+
+      ${actionBtn}
     </div>
 
-    <div style="margin-bottom:20px;">
-      <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Требования</div>
-      <div style="font-size:14px;color:var(--text);">${escapeHtml(t.requirements || 'Не указаны')}</div>
-    </div>
+    ${isMember ? `
+      <div id="team-tab-chat" class="team-tab-content" style="display:none;">
+        <div id="team-chat-messages" class="team-chat-messages">
+          <div class="empty">Загрузка сообщений...</div>
+        </div>
+        <div class="team-chat-input">
+          <input type="text" id="team-chat-input" placeholder="Написать сообщение..." maxlength="2000" onkeydown="if(event.key==='Enter') sendTeamMessage('${t.id}')">
+          <button class="btn btn-primary btn-sm" onclick="sendTeamMessage('${t.id}')">Отправить</button>
+        </div>
+      </div>
+    ` : ''}
 
-    <div style="margin-bottom:20px;">
-      <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Состав (${memberIds.length}/${t.slots})</div>
-     <div style="font-size:14px;">
-  ${memberIds.length
-    ? memberIds.map((uid, i) =>
-        `<div style="margin-bottom:6px;">• <span class="member-link" onclick="openUserProfile('${uid}')">${escapeHtml(memberNames[i])}</span></div>`
-      ).join('')
-    : 'Пока никого'}
-</div>
-    </div>
-
-    ${actionBtn}
     <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Закрыть</button>
   `);
+}
+
+// ===== ВКЛАДКИ В МОДАЛКЕ КОМАНДЫ =====
+function switchTeamTab(tab) {
+  document.querySelectorAll('.team-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.team-tab-content').forEach(c => c.style.display = 'none');
+
+  const btn = document.querySelector(`.team-tab[onclick*="'${tab}'"]`);
+  if (btn) btn.classList.add('active');
+
+  const content = document.getElementById('team-tab-' + tab);
+  if (content) content.style.display = 'block';
+
+  if (tab === 'chat') {
+    const teamId = window._currentTeamId;
+    if (teamId) loadTeamChat(teamId);
+  }
 }
 
 // ===== СОЗДАНИЕ КОМАНДЫ =====
