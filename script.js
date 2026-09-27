@@ -1443,3 +1443,111 @@ document.addEventListener('DOMContentLoaded', () => {
   createParticles();
   draw();
 })();
+
+
+
+// ===== ЛЮТЫЕ АНИМАЦИИ =====
+
+// 1. Прогресс-бар загрузки
+(function loadingBar() {
+  const bar = document.createElement('div');
+  bar.className = 'loading-bar';
+  document.body.appendChild(bar);
+  
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += Math.random() * 30;
+    if (progress >= 90) progress = 90;
+    bar.style.width = progress + '%';
+  }, 100);
+  
+  window.addEventListener('load', () => {
+    clearInterval(interval);
+    bar.style.width = '100%';
+    setTimeout(() => bar.classList.add('done'), 300);
+  });
+})();
+
+// 2. Свечение, следующее за курсором
+(function cursorGlow() {
+  const glow = document.createElement('div');
+  glow.className = 'cursor-glow';
+  document.body.appendChild(glow);
+  
+  document.addEventListener('mousemove', (e) => {
+    glow.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+  });
+})();
+
+// 3. Параллакс карточек при движении мыши
+document.addEventListener('mousemove', (e) => {
+  const cards = document.querySelectorAll('.card');
+  const mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+  const mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+  
+  cards.forEach(card => {
+    const rect = card.getBoundingClientRect();
+    const cardCenterX = rect.left + rect.width / 2;
+    const cardCenterY = rect.top + rect.height / 2;
+    
+    const distX = (e.clientX - cardCenterX) / 100;
+    const distY = (e.clientY - cardCenterY) / 100;
+    
+    const rotateX = -distY * 5;
+    const rotateY = distX * 5;
+    
+    if (Math.abs(distX) < 15 && Math.abs(distY) < 15) {
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+    } else {
+      card.style.transform = '';
+    }
+  });
+});
+
+// 4. Взрыв частиц при клике
+document.addEventListener('click', (e) => {
+  const count = 8;
+  const colors = ['#ff8c1e', '#ffc83c', '#ffe080', '#ffa028'];
+  
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'click-particle';
+    
+    const angle = (Math.PI * 2 * i) / count;
+    const distance = 40 + Math.random() * 40;
+    const dx = Math.cos(angle) * distance;
+    const dy = Math.sin(angle) * distance;
+    
+    particle.style.left = e.clientX + 'px';
+    particle.style.top = e.clientY + 'px';
+    particle.style.setProperty('--dx', dx + 'px');
+    particle.style.setProperty('--dy', dy + 'px');
+    particle.style.background = `radial-gradient(circle, ${colors[Math.floor(Math.random() * colors.length)]} 0%, #ff8c1e 100%)`;
+    
+    document.body.appendChild(particle);
+    
+    setTimeout(() => particle.remove(), 800);
+  }
+});
+
+// 5. Магнитные кнопки — притягиваются к курсору
+document.addEventListener('mousemove', (e) => {
+  const buttons = document.querySelectorAll('.btn-primary');
+  
+  buttons.forEach(btn => {
+    const rect = btn.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const distX = e.clientX - centerX;
+    const distY = e.clientY - centerY;
+    const dist = Math.sqrt(distX * distX + distY * distY);
+    
+    if (dist < 100) {
+      const pull = (100 - dist) / 100;
+      btn.style.transform = `translate(${distX * 0.15 * pull}px, ${distY * 0.15 * pull}px) translateY(-4px) scale(1.05)`;
+    } else if (!btn.matches(':hover')) {
+      btn.style.transform = '';
+    }
+  });
+});
