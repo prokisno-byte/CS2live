@@ -774,3 +774,117 @@ footer {
   display: flex;
   gap: 8px;
 }
+
+
+/* ===== ВКЛАДКИ КОМАНДЫ ===== */
+.team-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.team-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+
+.team-tab:hover {
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+.team-tab.active {
+  background: var(--white);
+  color: var(--black);
+}
+
+.team-tab-content {
+  animation: fade 0.2s ease;
+}
+
+/* ===== ЧАТ КОМАНДЫ ===== */
+.team-chat-messages {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  height: 280px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.chat-msg.own {
+  align-self: flex-end;
+  background: var(--white);
+  color: var(--black);
+}
+
+.chat-msg.other {
+  align-self: flex-start;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.chat-msg .author {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  opacity: 0.7;
+}
+
+.chat-msg .time {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-top: 3px;
+  text-align: right;
+}
+
+.team-chat-input {
+  display: flex;
+  gap: 8px;
+}
+
+.team-chat-input input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.18s;
+}
+
+.team-chat-input input:focus {
+  border-color: var(--white);
+}
