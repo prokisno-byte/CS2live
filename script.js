@@ -36,6 +36,7 @@ function go(page) {
   if (page === 'home' || page === 'teams') renderTeams();
   if (page === 'invites') renderInvites();
   if (page === 'friends') renderFriends();
+  if (page === 'messages') renderDialogs();
   if (page === 'profile') renderProfile();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -967,6 +968,7 @@ async function checkSession() {
   if (currentUser) {
     setTimeout(startHeartbeat, 1000);
     setTimeout(updateFriendsBadge, 1500);
+    setTimeout(updateMessagesBadge, 2000);
   }
 }
 // ===== ПРОФИЛЬ =====
@@ -1156,6 +1158,7 @@ function startHeartbeat() {
 
   beat();
   setInterval(beat, 60000);
+  setInterval(updateMessagesBadge, 15000);
 }
 
 
@@ -1454,8 +1457,9 @@ async function openUserProfile(userId) {
 
 // ===== ЗАГЛУШКА ЧАТА (будет на Этапе 4) =====
 function openChat(userId) {
-  toast('Чат появится в следующем обновлении');
-  console.log('Открыть чат с:', userId);
+  closeModal();
+  go('messages');
+  setTimeout(() => openDialog(userId), 300);
 }
 
 
@@ -1550,4 +1554,261 @@ async function sendTeamMessage(teamId) {
 
   // Загружаем сразу
   loadTeamChat(teamId);
+}
+
+
+
+// ===== ЛИЧНЫЕ СООБЩЕНИЯ =====
+let dialogInterval = null;
+let activeDialogUserId = null;
+
+async function renderDialogs() {
+  const container = document.getElementById('dialogs-list');
+  if (!container) return;
+
+  if (!currentUser) {
+    container.innerHTML = '<div class="empty">Войди в аккаунт</div>';
+    return;
+  }
+
+  // Загружаем всех друзей
+  const { data: friendships } = await supabaseClient
+    .from('friendships')
+    .select('*')
+    .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`)
+    .eq('status', 'accepted');
+
+  if (!friendships || friendships.length === 0) {
+    container.innerHTML = '<div class="empty">Нет друзей. Добавь друзей чтобы общаться.</div>';
+    return;
+  }
+
+  const friendIds = friendships.map(f => f.user_id === currentUser.id ? f.friend_id : f.user_id);
+
+  // Загружаем профили друзей
+  const { data: profiles } = await supabaseClient
+    .from('profiles')
+    .select('id, nick')
+    .in('id', friendIds);
+
+  const nickById = {};
+  (profiles || []).forEach(p => { nickById[p.id] = p.nick; });
+
+  // Загружаем последние сообщения с каждым
+  const { data: allMsgs } = await supabaseClient
+    .from('messages')
+    .select('*')
+    .is('team_id', null)
+    .or(`sender_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
+    .order('created_at', { ascending: false });
+
+  const lastMsgByUser = {};
+  (allMsgs || []).forEach(m => {
+    const otherId = m.sender_id === currentUser.id ? m.recipient_id : m.sender_id;
+    if (!lastMsgByUser[otherId]) lastMsgByUser[otherId] = m;
+  });
+
+  // Загружаем непрочитанные (мои прочтения)
+  const { data: reads } = await supabaseClient
+    .from('message_reads')
+    .select('message_id')
+    .eq('user_id', currentUser.id);
+
+  const readIds = new Set((reads || []).map(r => r.message_id));
+
+  // Считаем непрочитанные по каждому другу
+  const unreadByUser = {};
+  (allMsgs || []).forEach(m => {
+    if (m.recipient_id === currentUser.id && !readIds.has(m.id)) {
+      unreadByUser[m.sender_id] = (unreadByUser[m.sender_id] || 0) + 1;
+    }
+  });
+
+  // Сортируем друзей: с кем есть сообщения — вперёд
+  const sorted = [...friendIds].sort((a, b) => {
+    const aMsg = lastMsgByUser[a]?.created_at || '';
+    const bMsg = lastMsgByUser[b]?.created_at || '';
+    return bMsg.localeCompare(aMsg);
+  });
+
+  container.innerHTML = sorted.map(uid => {
+    const nick = nickById[uid] || 'Unknown';
+    const last = lastMsgByUser[uid];
+    const unread = unreadByUser[uid] || 0;
+    const preview = last
+      ? (last.sender_id === currentUser.id ? 'Ты: ' : '') + last.text.slice(0, 30)
+      : 'Начни переписку';
+    const isActive = activeDialogUserId === uid;
+    const isUnread = unread > 0;
+
+    return `
+      <div class="dialog-item ${isActive ? 'active' : ''} ${isUnread ? 'unread' : ''}" onclick="openDialog('${uid}')">
+        <div class="name">
+          ${escapeHtml(nick)}
+          ${unread > 0 ? `<span class="unread-count">${unread}</span>` : ''}
+        </div>
+        <div class="preview">${escapeHtml(preview)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function openDialog(userId) {
+  if (!currentUser) return;
+  activeDialogUserId = userId;
+
+  // Подсвечиваем активный диалог
+  document.querySelectorAll('.dialog-item').forEach(el => el.classList.remove('active'));
+  renderDialogs();
+
+  // Загружаем профиль собеседника
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('nick')
+    .eq('id', userId)
+    .single();
+
+  const nick = profile?.nick || 'Unknown';
+
+  // Меняем шапку
+  const header = document.getElementById('dialog-header');
+  if (header) header.textContent = nick;
+
+  // Показываем поле ввода
+  const inputWrap = document.getElementById('dialog-input-wrap');
+  if (inputWrap) inputWrap.style.display = 'flex';
+
+  // Грузим сообщения
+  await loadDialogMessages(userId);
+
+  // Автообновление
+  if (dialogInterval) clearInterval(dialogInterval);
+  dialogInterval = setInterval(() => {
+    if (activeDialogUserId === userId) {
+      loadDialogMessages(userId);
+    } else {
+      clearInterval(dialogInterval);
+      dialogInterval = null;
+    }
+  }, 5000);
+}
+
+async function loadDialogMessages(userId) {
+  if (!currentUser) return;
+  const container = document.getElementById('dialog-messages');
+  if (!container) return;
+
+  const { data: msgs } = await supabaseClient
+    .from('messages')
+    .select('*')
+    .is('team_id', null)
+    .or(`and(sender_id.eq.${currentUser.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${currentUser.id})`)
+    .order('created_at', { ascending: true })
+    .limit(200);
+
+  if (!msgs || msgs.length === 0) {
+    container.innerHTML = '<div class="empty" style="margin:auto;">Начни переписку!</div>';
+    return;
+  }
+
+  // Помечаем все входящие как прочитанные
+  const unreadIds = msgs
+    .filter(m => m.recipient_id === currentUser.id)
+    .map(m => m.id);
+
+  if (unreadIds.length > 0) {
+    // Проверяем что уже прочитано
+    const { data: existingReads } = await supabaseClient
+      .from('message_reads')
+      .select('message_id')
+      .eq('user_id', currentUser.id)
+      .in('message_id', unreadIds);
+
+    const existingSet = new Set((existingReads || []).map(r => r.message_id));
+    const toInsert = unreadIds.filter(id => !existingSet.has(id));
+
+    if (toInsert.length > 0) {
+      const reads = toInsert.map(id => ({ user_id: currentUser.id, message_id: id }));
+      await supabaseClient.from('message_reads').insert(reads);
+    }
+  }
+
+  container.innerHTML = msgs.map(m => {
+    const isOwn = m.sender_id === currentUser.id;
+    const time = new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    return `
+      <div class="chat-msg ${isOwn ? 'own' : 'other'}">
+        <div>${escapeHtml(m.text)}</div>
+        <div class="time">${time}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendPersonalMessage() {
+  if (!currentUser || !activeDialogUserId) return;
+
+  const input = document.getElementById('dialog-input');
+  if (!input) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+
+  const { error } = await supabaseClient
+    .from('messages')
+    .insert({
+      sender_id: currentUser.id,
+      recipient_id: activeDialogUserId,
+      text: text
+    });
+
+  if (error) {
+    toast('Ошибка: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  await loadDialogMessages(activeDialogUserId);
+  renderDialogs();
+}
+
+async function updateMessagesBadge() {
+  const badge = document.getElementById('messages-badge');
+  if (!badge) return;
+
+  if (!currentUser) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  const { data: allMsgs } = await supabaseClient
+    .from('messages')
+    .select('id')
+    .eq('recipient_id', currentUser.id)
+    .is('team_id', null);
+
+  if (!allMsgs || allMsgs.length === 0) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  const { data: reads } = await supabaseClient
+    .from('message_reads')
+    .select('message_id')
+    .eq('user_id', currentUser.id);
+
+  const readSet = new Set((reads || []).map(r => r.message_id));
+  const unread = allMsgs.filter(m => !readSet.has(m.id)).length;
+
+  if (unread > 0) {
+    badge.textContent = unread > 99 ? '99+' : unread;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
 }
