@@ -1334,3 +1334,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderProfile();
   go('home');
 });
+
+
+// ===== ЗАКРЫТИЕ МОДАЛКИ ПО КЛИКУ НА ФОН =====
+document.addEventListener('DOMContentLoaded', () => {
+  const modalBg = document.getElementById('modal-bg');
+  if (modalBg) {
+    modalBg.addEventListener('click', (e) => {
+      if (e.target === modalBg && !modalBg.classList.contains('modal-locked')) {
+        closeModal();
+      }
+    });
+  }
+});
