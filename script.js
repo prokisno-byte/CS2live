@@ -1404,7 +1404,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dist < 120) {
           const opacity = (1 - dist / 120) * 0.15;
-          ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+          ctx.strokeStyle = `rgba(255, 170, 40, ${opacity})`;
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
