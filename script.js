@@ -913,8 +913,11 @@ async function checkSession() {
       role: profile.role
     };
   }
-}
 
+  if (currentUser) {
+    setTimeout(startHeartbeat, 1000);
+  }
+}
 // ===== ПРОФИЛЬ =====
 async function renderProfile() {
   const nickEl = document.getElementById('pf-nick');
