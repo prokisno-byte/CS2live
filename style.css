@@ -1297,3 +1297,73 @@ header, main, footer, .modal-bg, .toast {
 .toast {
   z-index: 1000;
 }
+
+
+/* ===== КОМПАКТНАЯ МОДАЛКА КОМАНДЫ ===== */
+.modal {
+  max-width: 264px !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+}
+
+.modal h3 {
+  font-size: 15px !important;
+  margin-bottom: 4px !important;
+}
+
+.modal .sub {
+  font-size: 11px !important;
+  margin-bottom: 10px !important;
+}
+
+.modal .btn {
+  padding: 7px 12px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+}
+
+.modal .field {
+  margin-bottom: 10px !important;
+}
+
+.modal .field label {
+  font-size: 11px !important;
+  margin-bottom: 4px !important;
+}
+
+.modal .field input,
+.modal .field textarea,
+.modal .field select {
+  padding: 7px 10px !important;
+  font-size: 12px !important;
+}
+
+.modal .role-tag {
+  font-size: 9px !important;
+  padding: 2px 6px !important;
+}
+
+.modal .team-tabs {
+  padding: 3px !important;
+  margin-bottom: 10px !important;
+}
+
+.modal .team-tab {
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+}
+
+.modal .team-chat-messages {
+  height: 180px !important;
+  padding: 8px !important;
+}
+
+.modal .chat-msg {
+  font-size: 11px !important;
+  padding: 5px 8px !important;
+}
+
+.modal .team-chat-input input {
+  padding: 7px 10px !important;
+  font-size: 12px !important;
+}
