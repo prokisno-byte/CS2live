@@ -2015,3 +2015,221 @@ html {
 .sound-toggle.muted {
   opacity: 0.4;
 }
+
+
+/* ===== МИНИ-ИГРЫ ===== */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.game-card {
+  background: linear-gradient(135deg, var(--bg-2) 0%, var(--bg-3) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 200, 60, 0.1), transparent);
+  transition: left 0.6s;
+}
+
+.game-card:hover::before {
+  left: 100%;
+}
+
+.game-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(255, 200, 60, 0.4);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 200, 60, 0.15);
+}
+
+.game-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 12px rgba(255, 200, 60, 0.3));
+}
+
+.game-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.game-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.game-stat {
+  font-size: 12px;
+  color: #ffc83c;
+  font-weight: 700;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ===== МОДАЛКА ИГРЫ ===== */
+.game-modal {
+  text-align: center;
+}
+
+.game-modal h3 {
+  margin-bottom: 8px;
+}
+
+.game-modal .game-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.game-modal .game-hud .hud-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+}
+
+.game-modal .game-hud .hud-item b {
+  color: #ffc83c;
+  font-size: 15px;
+}
+
+.game-canvas {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.game-area {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 30px 20px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 15px;
+}
+
+.reaction-circle {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.1s;
+  user-select: none;
+}
+
+.reaction-circle.ready {
+  background: #22c55e;
+  box-shadow: 0 0 40px rgba(34, 197, 94, 0.6);
+  animation: pulseReady 0.3s;
+}
+
+@keyframes pulseReady {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.clicker-btn {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffc83c, #ff8c1e);
+  border: none;
+  color: #000;
+  font-size: 32px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.05s;
+  box-shadow: 0 10px 30px rgba(255, 140, 30, 0.4);
+  user-select: none;
+}
+
+.clicker-btn:active {
+  transform: scale(0.92);
+}
+
+.guess-input {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.guess-input input {
+  flex: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  text-align: center;
+}
+
+.guess-input input:focus {
+  border-color: var(--white);
+}
+
+.game-result {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 10px 0;
+  color: #ffc83c;
+}
+
+@media (max-width: 640px) {
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+  .reaction-circle {
+    width: 130px;
+    height: 130px;
+  }
+  .clicker-btn {
+    width: 150px;
+    height: 150px;
+    font-size: 26px;
+  }
+}
