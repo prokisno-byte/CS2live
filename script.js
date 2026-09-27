@@ -2142,21 +2142,7 @@ document.addEventListener('click', function unlockAudio() {
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
-}, { once: true });
-function playSound(type) {
-  ... // твоя функция
-}
-
-// Разблокировка аудио при первом клике
-document.addEventListener('click', function unlockAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-}, { once: true });
-
+}, { once: true }); 
 // ===== ЗАПУСК =====
 document.addEventListener('DOMContentLoaded', async () => {
   initFormHandlers();
@@ -2168,38 +2154,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderProfile();
   go('home');
 });
-  await renderTeams();
-  await renderInvites();
-  await renderFriends();
-  await renderProfile();
-  go('home');
-});
-// Добавляем в существующий DOMContentLoaded (НЕ создаём новый)
-
-
-/* ===== КНОПКА ЗВУКА ===== */
-.sound-toggle {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: all 0.2s;
-  font-size: 16px;
-  line-height: 1;
-  font-family: inherit;
-}
-
-.sound-toggle:hover {
-  background: var(--bg-2);
-  color: var(--text);
-  border-color: var(--border-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.sound-toggle.muted {
-  opacity: 0.4;
-  filter: grayscale(1);
-}
