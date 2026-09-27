@@ -21,6 +21,10 @@
     </div>
     <button class="btn btn-ghost" onclick="go('teams')" data-i18n="nav_teams">Команды</button>
     <button class="btn btn-ghost" onclick="go('invites')" data-i18n="nav_invites">Приглашения</button>
+    <button class="btn btn-ghost" onclick="go('friends')" data-i18n="nav_friends" style="position:relative;">
+  Друзья
+  <span id="friends-badge" style="display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;background:#ef4444;border-radius:50%;"></span>
+</button>
     <button class="btn btn-ghost" onclick="go('profile')" data-i18n="nav_profile">Профиль</button>
     <button class="btn btn-primary" onclick="go('auth')" id="nav-auth-btn" data-i18n="nav_login">Войти</button>
   </nav>
@@ -197,6 +201,22 @@
     <h3 class="sub-title" style="margin-top:24px;" data-i18n="invites_out">Исходящие</h3>
     <div id="invites-out"></div>
   </section>
+
+  <!-- ===== ДРУЗЬЯ ===== -->
+<section id="page-friends" class="page">
+  <div class="section-head">
+    <h2 data-i18n="friends_title">Друзья</h2>
+  </div>
+
+  <h3 class="sub-title" data-i18n="friends_in">Входящие запросы</h3>
+  <div id="friends-incoming"></div>
+
+  <h3 class="sub-title" style="margin-top:24px;" data-i18n="friends_out">Исходящие запросы</h3>
+  <div id="friends-outgoing"></div>
+
+  <h3 class="sub-title" style="margin-top:24px;" data-i18n="friends_list">Мои друзья</h3>
+  <div id="friends-list"></div>
+</section>
 
   <!-- ===== ПРОФИЛЬ ===== -->
   <section id="page-profile" class="page">
