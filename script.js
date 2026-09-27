@@ -1162,6 +1162,23 @@ async function checkSession() {
     setTimeout(updateFriendsBadge, 800);
     setTimeout(updateMessagesBadge, 1000);
   }
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth event:', event);
+    if (event === 'SIGNED_IN' && session) {
+      const { data: p } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+      if (p) {
+        currentUser = { id: p.id, nick: p.nick, email: session.user.email, elo: p.elo, role: p.role };
+        window._nickCache[p.id] = p.nick;
+        updateAuthUI();
+        toast('Добро пожаловать, ' + p.nick + '!');
+        go('profile');
+      }
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      updateAuthUI();
+    }
+  });
 }
 
 async function renderProfile() {
