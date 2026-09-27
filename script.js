@@ -1295,7 +1295,7 @@ async function editProfile() {
 
     <button class="btn btn-primary btn-block" onclick="saveProfile()">Сохранить</button>
     <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Отмена</button>
-  `);
+  , { lockBackdrop: true });
 }
 
 async function saveProfile() {
@@ -1342,6 +1342,19 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modalBg) {
     modalBg.addEventListener('click', (e) => {
       if (e.target === modalBg && !modalBg.classList.contains('modal-locked')) {
+        closeModal();
+      }
+    });
+  }
+});
+
+
+// Закрытие модалки по клику на фон (кроме заблокированных)
+document.addEventListener('DOMContentLoaded', () => {
+  const bg = document.getElementById('modal-bg');
+  if (bg) {
+    bg.addEventListener('click', (e) => {
+      if (e.target === bg && !bg.classList.contains('modal-locked')) {
         closeModal();
       }
     });
