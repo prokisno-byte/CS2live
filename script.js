@@ -186,24 +186,45 @@ function teamCard(t) {
 }
 
 // ===== МОДАЛКА КОМАНДЫ =====
+// ===== КЭШ КОМАНД =====
+window._teamCache = {};
+
+// ===== МОДАЛКА КОМАНДЫ (ОПТИМИЗИРОВАННАЯ) =====
 async function showTeam(id) {
-  const { data: t, error } = await supabaseClient
-    .from('teams')
-    .select('*')
-    .eq('id', id)
-    .single();
+  // Показываем модалку СРАЗУ — с заглушкой
+  const cached = window._teamCache[id];
+  if (cached) {
+    openModal(`
+      <h3>${escapeHtml(cached.name)}</h3>
+      <p class="sub">Владелец: ${escapeHtml(cached.ownerName)} • Макс. ЭЛО: ${cached.max_elo}</p>
+      <div class="empty" style="margin:auto;">Загрузка...</div>
+    `);
+  } else {
+    openModal(`<div class="empty" style="margin:auto;">Загрузка...</div>`);
+  }
 
-  if (error || !t) { toast('Команда не найдена'); return; }
+  // 1) Параллельно: команда + участники
+  const [teamRes, membersRes] = await Promise.all([
+    supabaseClient.from('teams').select('*').eq('id', id).single(),
+    supabaseClient.from('team_members').select('user_id').eq('team_id', id)
+  ]);
 
-  const { data: membersData } = await supabaseClient
-    .from('team_members')
-    .select('user_id')
-    .eq('team_id', id);
+  const t = teamRes.data;
+  if (!t) { toast('Команда не найдена'); closeModal(); return; }
 
-  const memberIds = (membersData || []).map(m => m.user_id);
+  const memberIds = (membersRes.data || []).map(m => m.user_id);
 
+  // 2) Ники + статусы параллельно
   const allIds = [...new Set([...memberIds, t.owner_id])];
-  const nickById = await getNicks(allIds);
+  const [nickById, statusRes] = await Promise.all([
+    getNicks(allIds),
+    allIds.length
+      ? supabaseClient.from('user_status').select('user_id, status').in('user_id', allIds)
+      : Promise.resolve({ data: [] })
+  ]);
+
+  const statusById = {};
+  (statusRes.data || []).forEach(s => { statusById[s.user_id] = s.status; });
 
   const memberNames = memberIds.map(uid => nickById[uid] || 'Unknown');
   const ownerName = nickById[t.owner_id] || 'Unknown';
@@ -211,35 +232,46 @@ async function showTeam(id) {
   const isOwner = currentUser && t.owner_id === currentUser.id;
   const isMember = currentUser && memberIds.includes(currentUser.id);
 
-  // Сохраняем ID команды для чата
   window._currentTeamId = t.id;
+
+  // Сохраняем в кэш
+  window._teamCache[id] = {
+    name: t.name,
+    ownerName: ownerName,
+    max_elo: t.max_elo
+  };
+
+  // 3) Заявка + голосование (параллельно, только если нужно)
+  const promises = [];
 
   let alreadyInvited = false;
   if (currentUser && !isOwner && !isMember) {
-    const { data: existing } = await supabaseClient
-      .from('invites')
-      .select('id')
-      .eq('team_id', id)
-      .eq('from_user_id', currentUser.id)
-      .eq('status', 'pending')
-      .maybeSingle();
-    alreadyInvited = !!existing;
+    promises.push(
+      supabaseClient.from('invites').select('id')
+        .eq('team_id', id).eq('from_user_id', currentUser.id).eq('status', 'pending')
+        .maybeSingle()
+        .then(r => { alreadyInvited = !!r.data; })
+    );
   }
 
+  let activeDiss = null;
+  if (isOwner) {
+    promises.push(
+      supabaseClient.from('team_dissolutions').select('id')
+        .eq('team_id', t.id).eq('status', 'active').maybeSingle()
+        .then(r => { activeDiss = r.data; })
+    );
+  }
+
+  if (promises.length) await Promise.all(promises);
+
+  // 4) Кнопка действия
   const rolesHtml = (t.roles || []).map(r => `<span class="role-tag">${r}</span>`).join('');
 
-  // Кнопка действия
   let actionBtn = '';
   if (!currentUser) {
     actionBtn = `<button class="btn btn-primary btn-block" onclick="closeModal(); go('auth')">Войти, чтобы подать заявку</button>`;
   } else if (isOwner) {
-    const { data: activeDiss } = await supabaseClient
-      .from('team_dissolutions')
-      .select('id')
-      .eq('team_id', t.id)
-      .eq('status', 'active')
-      .maybeSingle();
-
     if (activeDiss) {
       actionBtn = `<button class="btn btn-block" disabled style="opacity:0.5;cursor:default;">Голосование идёт</button>`;
     } else {
@@ -258,8 +290,13 @@ async function showTeam(id) {
     actionBtn = `<button class="btn btn-primary btn-block" onclick="sendInvite('${t.id}')">Подать заявку</button>`;
   }
 
-  const dissolutionHtml = await getDissolutionBlock(t.id, memberIds);
+  // 5) Блок голосования
+  let dissolutionHtml = '';
+  if (isMember) {
+    dissolutionHtml = await getDissolutionBlock(t.id, memberIds);
+  }
 
+  // 6) Собираем модалку
   openModal(`
     <h3>${escapeHtml(t.name)}</h3>
     <p class="sub">Владелец: ${escapeHtml(ownerName)} • Макс. ЭЛО: ${t.max_elo}</p>
@@ -291,7 +328,7 @@ async function showTeam(id) {
         <div style="font-size:14px;">
           ${memberIds.length
             ? memberIds.map((uid, i) =>
-                `<div style="margin-bottom:6px;">• <span class="member-link" onclick="openUserProfile('${uid}')">${escapeHtml(memberNames[i])}</span></div>`
+                `<div style="margin-bottom:6px;">• <span class="status-dot status-${statusById[uid] || 'offline'}" style="width:8px;height:8px;"></span> <span class="member-link" onclick="openUserProfile('${uid}')">${escapeHtml(memberNames[i])}</span></div>`
               ).join('')
             : 'Пока никого'}
         </div>
