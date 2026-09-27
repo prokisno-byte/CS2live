@@ -44,6 +44,7 @@
       <button id="lang-ru" class="active" onclick="setLang('ru')">RU</button>
       <button id="lang-en" onclick="setLang('en')">EN</button>
     </div>
+    <button class="btn btn-ghost" onclick="go('leaderboard')">Рейтинг</button>
     <button class="btn btn-ghost" onclick="go('teams')" data-i18n="nav_teams">Команды</button>
     <button class="btn btn-ghost" onclick="go('invites')" data-i18n="nav_invites">Приглашения</button>
     <button class="btn btn-ghost" onclick="go('friends')" data-i18n="nav_friends" style="position:relative;">
@@ -55,6 +56,11 @@
   <span id="messages-badge" style="display:none;position:absolute;top:2px;right:2px;min-width:16px;height:16px;background:#ef4444;color:#fff;border-radius:8px;font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 4px;">0</span>
 </button>
     <button class="btn btn-ghost" onclick="go('profile')" data-i18n="nav_profile">Профиль</button>
+          <button class="btn btn-ghost sound-toggle" id="sound-toggle" onclick="toggleSound()" title="Звук">🔊</button>
+      <button class="btn btn-ghost notif-bell" onclick="toggleNotifPanel()" title="Уведомления">
+        🔔
+        <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+      </button>
     <button class="btn btn-primary" onclick="go('auth')" id="nav-auth-btn" data-i18n="nav_login">Войти</button>
   </nav>
 </header>
@@ -258,6 +264,7 @@
     </h2>
     <div class="meta" id="pf-email">Войди в аккаунт</div>
     <button class="btn btn-sm" style="margin-top:8px;" onclick="editProfile()">✏️ Редактировать профиль</button>
+    <button class="btn btn-sm" style="margin-top:8px;" onclick="changeAvatar()">🖼️ Сменить аватар</button>
     <div style="margin-top:10px;">
       <select id="pf-status-select" class="status-select" onchange="setStatus(this.value)">
         <option value="online">🟢 Онлайн</option>
@@ -267,12 +274,24 @@
     </div>
   </div>
 </div>
+        <div style="margin-bottom:20px;">
+      <input type="text" class="player-search" id="player-search" placeholder="🔍 Поиск игроков по нику..." oninput="searchPlayers(this.value)">
+      <div id="search-results" style="margin-top:12px;"></div>
+    </div>
+
     <div class="stats">
       <div class="stat"><div class="label" data-i18n="pf_elo">ЭЛО</div><div class="value" id="pf-elo">—</div></div>
       <div class="stat"><div class="label" data-i18n="pf_role">Роль</div><div class="value" id="pf-role">—</div></div>
       <div class="stat"><div class="label" data-i18n="pf_team">Команда</div><div class="value" id="pf-team">Нет</div></div>
       <div class="stat"><div class="label" data-i18n="pf_status">Статус</div><div class="value" id="pf-status">—</div></div>
     </div>
+        <div class="section-head" style="margin-top:24px;">
+      <h2>🏆 Достижения</h2>
+    </div>
+    <div class="achievements-grid" id="achievements-grid">
+      <div class="empty">Загрузка...</div>
+    </div>
+
     <div class="section-head">
       <h2 data-i18n="pf_my_teams">Мои команды</h2>
       <button class="btn btn-sm" onclick="go('create')" data-i18n="pf_new_team">+ Создать команду</button>
@@ -305,6 +324,16 @@
     </div>
   </div>
 </section>
+    <!-- ===== РЕЙТИНГ ===== -->
+  <section id="page-leaderboard" class="page">
+    <div class="section-head">
+      <h2>Рейтинг игроков</h2>
+    </div>
+    <div class="leaderboard" id="leaderboard-list">
+      <div class="empty">Загрузка...</div>
+    </div>
+  </section>
+
 </main>
 
 <!-- ===== МОДАЛЬНОЕ ОКНО (детали команды) ===== -->
@@ -319,6 +348,13 @@
 <footer>
   <div>Team Search CS2 © 2025 — <span data-i18n="footer_text">Найди свою команду</span></div>
 </footer>
+<!-- ПАНЕЛЬ УВЕДОМЛЕНИЙ -->
+<div class="notif-panel" id="notif-panel">
+  <div style="font-weight:700;font-size:15px;margin-bottom:10px;">Уведомления</div>
+  <div id="notif-list">
+    <div class="empty">Загрузка...</div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
