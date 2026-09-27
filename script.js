@@ -1034,3 +1034,72 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderProfile();
   go('home');
 });
+// ===== СТАТУСЫ =====
+async function setStatus(status) {
+  if (!currentUser) return;
+
+  const { error } = await supabaseClient
+    .from('user_status')
+    .upsert({
+      user_id: currentUser.id,
+      status: status,
+      last_seen: new Date().toISOString()
+    });
+
+  if (error) {
+    console.error('Ошибка сохранения статуса:', error);
+    toast('Не удалось сохранить статус');
+    return;
+  }
+
+  const dot = document.getElementById('pf-status-dot');
+  if (dot) {
+    dot.className = 'status-dot status-' + status;
+  }
+
+  const labels = { online: 'Онлайн', away: 'Отошёл', offline: 'Оффлайн' };
+  toast('Статус: ' + labels[status]);
+}
+
+async function loadAndShowStatus() {
+  if (!currentUser) return;
+
+  const { data } = await supabaseClient
+    .from('user_status')
+    .select('status')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+
+  const status = data?.status || 'online';
+  const dot = document.getElementById('pf-status-dot');
+  const sel = document.getElementById('pf-status-select');
+
+  if (dot) dot.className = 'status-dot status-' + status;
+  if (sel) sel.value = status;
+}
+
+function startHeartbeat() {
+  if (!currentUser) return;
+
+  const beat = async () => {
+    if (!currentUser) return;
+    const { data } = await supabaseClient
+      .from('user_status')
+      .select('status')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    const currentStatus = data?.status || 'online';
+
+    await supabaseClient
+      .from('user_status')
+      .upsert({
+        user_id: currentUser.id,
+        status: currentStatus,
+        last_seen: new Date().toISOString()
+      });
+  };
+
+  beat();
+  setInterval(beat, 60000);
+}
