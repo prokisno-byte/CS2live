@@ -45,6 +45,7 @@
       <button id="lang-en" onclick="setLang('en')">EN</button>
     </div>
     <button class="btn btn-ghost" onclick="go('leaderboard')">Рейтинг</button>
+          <button class="btn btn-ghost" onclick="go('games')">🎮 Игры</button>
     <button class="btn btn-ghost" onclick="go('teams')" data-i18n="nav_teams">Команды</button>
     <button class="btn btn-ghost" onclick="go('invites')" data-i18n="nav_invites">Приглашения</button>
     <button class="btn btn-ghost" onclick="go('friends')" data-i18n="nav_friends" style="position:relative;">
@@ -333,7 +334,42 @@
       <div class="empty">Загрузка...</div>
     </div>
   </section>
+    <!-- ===== ИГРЫ ===== -->
+  <section id="page-games" class="page">
+    <div class="section-head">
+      <h2>🎮 Мини-игры</h2>
+    </div>
 
+    <div class="games-grid">
+      <div class="game-card" onclick="openGame('snake')">
+        <div class="game-icon">🐍</div>
+        <div class="game-title">Змейка</div>
+        <div class="game-desc">Классика. Собирай яблоки, не врезайся.</div>
+        <div class="game-stat">Рекорд: <span id="snake-best">0</span></div>
+      </div>
+
+      <div class="game-card" onclick="openGame('reaction')">
+        <div class="game-icon">🎯</div>
+        <div class="game-title">Реакция</div>
+        <div class="game-desc">Кликни, когда круг станет зелёным.</div>
+        <div class="game-stat">Лучшее: <span id="reaction-best">—</span></div>
+      </div>
+
+      <div class="game-card" onclick="openGame('guess')">
+        <div class="game-icon">🧠</div>
+        <div class="game-title">Угадай число</div>
+        <div class="game-desc">От 1 до 100. Успей за 7 попыток.</div>
+        <div class="game-stat">Побед: <span id="guess-wins">0</span></div>
+      </div>
+
+      <div class="game-card" onclick="openGame('clicker')">
+        <div class="game-icon">⚡</div>
+        <div class="game-title">Кликер</div>
+        <div class="game-desc">Успей кликнуть 50 раз за 10 секунд.</div>
+        <div class="game-stat">Рекорд: <span id="clicker-best">0</span></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <!-- ===== МОДАЛЬНОЕ ОКНО (детали команды) ===== -->
