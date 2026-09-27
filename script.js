@@ -25,6 +25,38 @@ const DB = {
 
 // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
 let currentUser = null;
+// ===== КЭШ НИКОВ =====
+window._nickCache = {};
+
+async function getNick(userId) {
+  if (window._nickCache[userId]) return window._nickCache[userId];
+
+  const { data } = await supabaseClient
+    .from('profiles')
+    .select('nick')
+    .eq('id', userId)
+    .single();
+
+  const nick = data?.nick || 'Unknown';
+  window._nickCache[userId] = nick;
+  return nick;
+}
+
+async function getNicks(userIds) {
+  const missing = userIds.filter(id => !window._nickCache[id]);
+  if (missing.length > 0) {
+    const { data } = await supabaseClient
+      .from('profiles')
+      .select('id, nick')
+      .in('id', missing);
+
+    (data || []).forEach(p => { window._nickCache[p.id] = p.nick; });
+  }
+
+  const result = {};
+  userIds.forEach(id => { result[id] = window._nickCache[id] || 'Unknown'; });
+  return result;
+}
 let currentLang = DB.get('lang', 'ru');
 
 // ===== ПЕРЕКЛЮЧЕНИЕ СТРАНИЦ =====
@@ -1467,7 +1499,7 @@ function openChat(userId) {
 // ===== ЧАТ КОМАНДЫ =====
 let chatInterval = null;
 
-async function loadTeamChat(teamId) {
+async function loadTeamChat(teamId, options = {}) {
   const container = document.getElementById('team-chat-messages');
   if (!container) return;
 
@@ -1483,6 +1515,49 @@ async function loadTeamChat(teamId) {
     container.innerHTML = '<div class="empty">Ошибка загрузки сообщений</div>';
     return;
   }
+
+  // Собираем все ID отправителей
+  const senderIds = [...new Set((messages || []).map(m => m.sender_id))];
+
+  // Загружаем ники через кэш
+  const nickById = await getNicks(senderIds);
+
+  if (!messages || messages.length === 0) {
+    container.innerHTML = '<div class="empty" style="margin:auto;">Сообщений пока нет. Напиши первое!</div>';
+    return;
+  }
+
+  container.innerHTML = messages.map(m => renderChatMessage(m, nickById)).join('');
+  container.scrollTop = container.scrollHeight;
+
+  // Автообновление
+  if (!options.skipInterval) {
+    if (chatInterval) clearInterval(chatInterval);
+    chatInterval = setInterval(() => {
+      if (document.getElementById('team-chat-messages')) {
+        loadTeamChat(teamId, { skipInterval: true });
+      } else {
+        clearInterval(chatInterval);
+        chatInterval = null;
+      }
+    }, 5000);
+  }
+}
+
+// Рендер одного сообщения (общий для чата и ЛС)
+function renderChatMessage(m, nickById) {
+  const isOwn = currentUser && m.sender_id === currentUser.id;
+  const nick = isOwn ? 'Ты' : (nickById[m.sender_id] || 'Unknown');
+  const time = new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  return `
+    <div class="chat-msg ${isOwn ? 'own' : 'other'}" data-msg-id="${m.id || 'temp'}">
+      <div class="author">${escapeHtml(nick)}</div>
+      <div>${escapeHtml(m.text)}</div>
+      <div class="time">${time}</div>
+    </div>
+  `;
+}
 
   // Загружаем ники отправителей
   const senderIds = [...new Set((messages || []).map(m => m.sender_id))];
@@ -1538,19 +1613,50 @@ async function sendTeamMessage(teamId) {
 
   input.value = '';
 
-  const { error } = await supabaseClient
+  // Оптимистичный рендер — сразу показываем в UI
+  const container = document.getElementById('team-chat-messages');
+  const tempId = 'temp_' + Date.now();
+  const tempMsg = {
+    id: tempId,
+    sender_id: currentUser.id,
+    team_id: teamId,
+    text: text,
+    created_at: new Date().toISOString()
+  };
+
+  if (container) {
+    const nickById = { [currentUser.id]: currentUser.nick };
+    const html = renderChatMessage(tempMsg, nickById);
+    const empty = container.querySelector('.empty');
+    if (empty) empty.remove();
+    container.insertAdjacentHTML('beforeend', html);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // Отправляем в базу
+  const { data, error } = await supabaseClient
     .from('messages')
     .insert({
       sender_id: currentUser.id,
       team_id: teamId,
       text: text
-    });
+    })
+    .select()
+    .single();
 
   if (error) {
     toast('Ошибка: ' + error.message);
     console.error(error);
+    // Удаляем временное сообщение
+    const tempEl = document.querySelector(`[data-msg-id="${tempId}"]`);
+    if (tempEl) tempEl.remove();
     return;
   }
+
+  // Заменяем temp ID на настоящий
+  const tempEl = document.querySelector(`[data-msg-id="${tempId}"]`);
+  if (tempEl && data) tempEl.setAttribute('data-msg-id', data.id);
+}
 
   // Загружаем сразу
   loadTeamChat(teamId);
